@@ -1,0 +1,2750 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>操盘指挥系统 · 完整版</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js">
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #080d1a;
+            color: #c8d0e0;
+            font-family: 'Inter', 'Segoe UI', sans-serif;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+        .sidebar {
+            width: 88px;
+            background: rgba(10, 16, 32, 0.95);
+            border-right: 1px solid #1a2848;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 16px;
+            gap: 4px;
+            flex-shrink: 0;
+            z-index: 10;
+            overflow-y: auto;
+        }
+        .sidebar::-webkit-scrollbar {
+            width: 2px;
+        }
+        .sidebar::-webkit-scrollbar-thumb {
+            background: #1a2848;
+        }
+        .sidebar .logo {
+            font-size: 24px;
+            margin-bottom: 12px;
+            cursor: default;
+        }
+        .nav-item {
+            width: 72px;
+            height: 56px;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 9px;
+            color: #5a7a9a;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            background: transparent;
+            gap: 0px;
+            padding: 4px 0;
+        }
+        .nav-item .icon {
+            font-size: 18px;
+            line-height: 1.2;
+        }
+        .nav-item .label {
+            font-size: 8px;
+            margin-top: 1px;
+            white-space: nowrap;
+        }
+        .nav-item:hover {
+            background: rgba(60, 120, 255, 0.08);
+            color: #b0c8e8;
+        }
+        .nav-item.active {
+            background: rgba(60, 120, 255, 0.15);
+            color: #6a9aff;
+            box-shadow: inset 0 0 0 1px rgba(60, 120, 255, 0.2);
+        }
+        .nav-divider {
+            width: 60%;
+            height: 1px;
+            background: #1a2848;
+            margin: 6px 0;
+        }
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            padding: 12px 20px 20px 20px;
+            background: #0b111f;
+        }
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+            flex-shrink: 0;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .page-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #e8f0ff;
+        }
+        .page-title small {
+            font-size: 12px;
+            font-weight: 400;
+            color: #4a6080;
+            margin-left: 10px;
+        }
+        .top-bar .clock {
+            font-size: 12px;
+            color: #5a7a9a;
+            background: #111927;
+            padding: 4px 14px;
+            border-radius: 40px;
+            border: 1px solid #1a2848;
+        }
+        .pair-selector {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #111927;
+            padding: 4px 12px;
+            border-radius: 40px;
+            border: 1px solid #1a2848;
+        }
+        .pair-selector label {
+            font-size: 10px;
+            color: #4a6080;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .pair-selector select {
+            background: transparent;
+            border: none;
+            color: #e8f0ff;
+            font-size: 13px;
+            font-weight: 500;
+            outline: none;
+            padding: 4px 0;
+            cursor: pointer;
+        }
+        .pair-selector select option {
+            background: #111927;
+            color: #e8f0ff;
+        }
+        .page-container {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding-right: 4px;
+        }
+        .page-container::-webkit-scrollbar {
+            width: 4px;
+        }
+        .page-container::-webkit-scrollbar-thumb {
+            background: #1a2848;
+            border-radius: 8px;
+        }
+        .page {
+            display: none;
+            animation: fadeIn 0.25s ease;
+        }
+        .page.active {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from {
+                opacity: 0.4;
+                transform: translateY(6px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .card {
+            background: rgba(14, 22, 40, 0.7);
+            border: 1px solid #1a2848;
+            border-radius: 16px;
+            padding: 14px 16px 12px;
+            margin-bottom: 14px;
+            transition: border-color 0.2s;
+        }
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            color: #5a7a9a;
+            margin-bottom: 6px;
+        }
+        .card-header .badge {
+            background: #1a2848;
+            padding: 2px 10px;
+            border-radius: 30px;
+            font-size: 9px;
+            color: #6a9aff;
+        }
+        .chart-box {
+            width: 100%;
+            height: 180px;
+        }
+        .chart-box.tall {
+            height: 240px;
+        }
+        .chart-box.short {
+            height: 120px;
+        }
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
+        .grid-3 {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 14px;
+        }
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+        .kpi-item {
+            background: rgba(12, 20, 42, 0.6);
+            border-radius: 12px;
+            padding: 12px 8px 10px;
+            border: 1px solid #1a2848;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .kpi-item:hover {
+            border-color: #3a5a8a;
+            background: rgba(20, 34, 64, 0.7);
+        }
+        .kpi-item .label {
+            font-size: 9px;
+            text-transform: uppercase;
+            color: #4a6080;
+            letter-spacing: 0.2px;
+        }
+        .kpi-item .value {
+            font-size: 20px;
+            font-weight: 700;
+            color: #f0f6ff;
+        }
+        .kpi-item .value .unit {
+            font-size: 12px;
+            color: #5a7a9a;
+            font-weight: 400;
+        }
+        .kpi-item .sub {
+            font-size: 9px;
+            color: #4a6080;
+            margin-top: 2px;
+        }
+        .table-wrap {
+            overflow-x: auto;
+            margin-top: 4px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+        }
+        th {
+            text-align: left;
+            color: #4a6080;
+            font-weight: 500;
+            padding: 6px 6px;
+            border-bottom: 1px solid #1a2848;
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        td {
+            padding: 6px 6px;
+            border-bottom: 1px solid #0f1a2e;
+            color: #b0c8e8;
+        }
+        .tag {
+            display: inline-block;
+            padding: 1px 8px;
+            border-radius: 30px;
+            font-size: 8px;
+            font-weight: 500;
+        }
+        .tag.robot {
+            background: #1a2a4a;
+            color: #6a9aff;
+        }
+        .tag.user {
+            background: #1a3a2a;
+            color: #4cd9a0;
+        }
+        .tag.alert {
+            background: #3a1a1a;
+            color: #ff5a7a;
+        }
+        .tag.success {
+            background: #1a3a2a;
+            color: #4cd9a0;
+        }
+        .tag.warning {
+            background: #3a3a1a;
+            color: #ffb347;
+        }
+        .tag.danger {
+            background: #3a1a1a;
+            color: #ff5a7a;
+        }
+        .config-bar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 14px 20px;
+            background: rgba(12, 20, 42, 0.5);
+            border-radius: 12px;
+            padding: 10px 16px;
+            margin-bottom: 16px;
+            border: 1px solid #1a2848;
+        }
+        .config-bar .group {
+            display: flex;
+            align-items: center;
+            gap: 6px 12px;
+            flex-wrap: wrap;
+        }
+        .config-bar label {
+            font-size: 10px;
+            text-transform: uppercase;
+            color: #4a6080;
+            letter-spacing: 0.3px;
+        }
+        .config-bar input,
+        .config-bar select {
+            background: #0b111f;
+            border: 1px solid #1a2848;
+            border-radius: 6px;
+            padding: 4px 10px;
+            color: #e8f0ff;
+            font-size: 12px;
+            width: 70px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .config-bar input:focus,
+        .config-bar select:focus {
+            border-color: #4a8aff;
+        }
+        .config-bar input[type="number"] {
+            width: 60px;
+        }
+        .config-bar select {
+            width: auto;
+            padding-right: 6px;
+        }
+        .config-bar .hint {
+            font-size: 9px;
+            color: #4a6080;
+        }
+        .filter-panel {
+            background: rgba(12, 20, 42, 0.4);
+            border-radius: 12px;
+            padding: 12px 16px;
+            margin-bottom: 14px;
+            border: 1px solid #1a2848;
+        }
+        .filter-panel .filter-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 10px 16px;
+            margin-top: 6px;
+        }
+        .filter-panel .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .filter-panel .filter-group label {
+            font-size: 9px;
+            text-transform: uppercase;
+            color: #4a6080;
+            letter-spacing: 0.2px;
+        }
+        .filter-panel .filter-group input {
+            background: #0b111f;
+            border: 1px solid #1a2848;
+            border-radius: 6px;
+            padding: 4px 8px;
+            color: #e8f0ff;
+            font-size: 12px;
+            width: 100%;
+            outline: none;
+        }
+        .filter-panel .filter-group input:focus {
+            border-color: #4a8aff;
+        }
+        .filter-panel .filter-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-top: 8px;
+            flex-wrap: wrap;
+        }
+        .filter-panel .btn-sm {
+            background: #1a2a4a;
+            border: none;
+            border-radius: 6px;
+            padding: 5px 16px;
+            color: #e8f0ff;
+            font-size: 11px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .filter-panel .btn-sm.primary {
+            background: #3a6aff;
+        }
+        .filter-panel .btn-sm.primary:hover {
+            background: #4a7aff;
+        }
+        .filter-panel .btn-sm.secondary:hover {
+            background: #2a3a5a;
+        }
+        .filter-panel .filter-status {
+            font-size: 11px;
+            color: #4cd9a0;
+            margin-left: auto;
+        }
+        .monitor-status {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-bottom: 8px;
+        }
+        .monitor-status .status-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+        }
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .status-dot.green {
+            background: #4cd9a0;
+            box-shadow: 0 0 8px #4cd9a066;
+        }
+        .status-dot.yellow {
+            background: #ffb347;
+            box-shadow: 0 0 8px #ffb34766;
+        }
+        .status-dot.red {
+            background: #ff5a7a;
+            box-shadow: 0 0 8px #ff5a7a66;
+        }
+        .alert-list {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .alert-list::-webkit-scrollbar {
+            width: 4px;
+        }
+        .alert-list::-webkit-scrollbar-thumb {
+            background: #1a2848;
+            border-radius: 8px;
+        }
+        .threshold-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .threshold-item {
+            background: rgba(12, 20, 42, 0.5);
+            border-radius: 8px;
+            padding: 6px 10px;
+            text-align: center;
+            border: 1px solid #1a2848;
+        }
+        .threshold-item .label {
+            font-size: 8px;
+            text-transform: uppercase;
+            color: #4a6080;
+        }
+        .threshold-item .value {
+            font-size: 14px;
+            font-weight: 600;
+            color: #e8f0ff;
+        }
+        .stable-summary-cards {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+        .stable-summary-cards .stat-card {
+            background: rgba(12, 20, 42, 0.6);
+            border-radius: 12px;
+            padding: 12px;
+            text-align: center;
+            border: 1px solid #1a2848;
+        }
+        .stable-summary-cards .stat-card .num {
+            font-size: 28px;
+            font-weight: 700;
+            color: #f0f6ff;
+        }
+        .stable-summary-cards .stat-card .desc {
+            font-size: 10px;
+            color: #4a6080;
+            margin-top: 2px;
+        }
+        .text-muted {
+            color: #4a6080;
+        }
+        .clickable {
+            cursor: pointer;
+        }
+        .clickable:hover {
+            opacity: 0.85;
+        }
+        .detail-table-card .table-wrap {
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+        .detail-table-card .table-wrap::-webkit-scrollbar {
+            width: 4px;
+        }
+        .detail-table-card .table-wrap::-webkit-scrollbar-thumb {
+            background: #1a2848;
+            border-radius: 8px;
+        }
+
+        /* 规则配置面板（内嵌在用户画像中） */
+        .rule-panel {
+            background: rgba(12, 20, 42, 0.4);
+            border-radius: 12px;
+            padding: 12px 16px;
+            margin-bottom: 14px;
+            border: 1px solid #1a2848;
+        }
+        .rule-panel .rule-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 8px 14px;
+            margin-top: 6px;
+        }
+        .rule-panel .rule-group {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .rule-panel .rule-group label {
+            font-size: 8px;
+            text-transform: uppercase;
+            color: #4a6080;
+            letter-spacing: 0.2px;
+        }
+        .rule-panel .rule-group input,
+        .rule-panel .rule-group select {
+            background: #0b111f;
+            border: 1px solid #1a2848;
+            border-radius: 6px;
+            padding: 3px 8px;
+            color: #e8f0ff;
+            font-size: 11px;
+            width: 100%;
+            outline: none;
+        }
+        .rule-panel .rule-group input:focus,
+        .rule-panel .rule-group select:focus {
+            border-color: #4a8aff;
+        }
+        .rule-panel .rule-group .hint {
+            font-size: 8px;
+            color: #4a6080;
+        }
+        .rule-panel .rule-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-top: 8px;
+            flex-wrap: wrap;
+        }
+        .rule-panel .rule-actions .btn-sm {
+            background: #1a2a4a;
+            border: none;
+            border-radius: 6px;
+            padding: 4px 14px;
+            color: #e8f0ff;
+            font-size: 10px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .rule-panel .rule-actions .btn-sm.primary {
+            background: #3a6aff;
+        }
+        .rule-panel .rule-actions .btn-sm.primary:hover {
+            background: #4a7aff;
+        }
+        .rule-panel .rule-actions .btn-sm.secondary:hover {
+            background: #2a3a5a;
+        }
+        .rule-panel .rule-status {
+            font-size: 10px;
+            color: #4cd9a0;
+            margin-left: auto;
+        }
+
+        /* 规则配置分组标题 */
+        .rule-section-title {
+            grid-column: span 2;
+            font-size: 10px;
+            font-weight: 600;
+            color: #6a9aff;
+            border-bottom: 1px solid #1a2848;
+            padding-bottom: 4px;
+            margin-top: 4px;
+        }
+        .rule-section-title.retail {
+            color: #ffb347;
+        }
+        .rule-section-title.wool {
+            color: #ff5a7a;
+        }
+        .rule-section-title.prog {
+            color: #4a8aff;
+        }
+
+        @media (max-width: 1024px) {
+            .kpi-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            .grid-2,
+            .grid-3 {
+                grid-template-columns: 1fr;
+            }
+            .sidebar {
+                width: 72px;
+            }
+            .nav-item {
+                width: 60px;
+                height: 48px;
+            }
+            .nav-item .icon {
+                font-size: 16px;
+            }
+            .nav-item .label {
+                font-size: 7px;
+            }
+            .rule-panel .rule-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+        @media (max-width: 600px) {
+            .sidebar {
+                width: 56px;
+                padding-top: 8px;
+            }
+            .nav-item {
+                width: 48px;
+                height: 40px;
+            }
+            .nav-item .icon {
+                font-size: 14px;
+            }
+            .nav-item .label {
+                display: none;
+            }
+            .main {
+                padding: 8px;
+            }
+            .kpi-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .config-bar {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 8px;
+            }
+            .filter-panel .filter-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+            .top-bar {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 8px;
+            }
+            .rule-panel .rule-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ===== 左侧导航 ===== -->
+    <nav class="sidebar">
+        <div class="logo">🎯</div>
+        <button class="nav-item active" data-page="dashboard"><span class="icon">📊</span><span class="label">总览</span></button>
+        <button class="nav-item" data-page="orderbook"><span class="icon">⚡</span><span class="label">盘口</span></button>
+        <button class="nav-item" data-page="position"><span class="icon">🧠</span><span class="label">筹码</span></button>
+        <button class="nav-item" data-page="risk"><span class="icon">🤖</span><span class="label">风控</span></button>
+        <button class="nav-item" data-page="macro"><span class="icon">🌐</span><span class="label">宏观</span></button>
+        <div class="nav-divider"></div>
+        <button class="nav-item" data-page="detail-orders"><span class="icon">📋</span><span class="label">挂单明细</span></button>
+        <button class="nav-item" data-page="detail-holders"><span class="icon">👥</span><span class="label">持仓明细</span></button>
+        <button class="nav-item" data-page="detail-whales"><span class="icon">🐋</span><span class="label">巨鲸警报</span></button>
+        <div class="nav-divider"></div>
+        <button class="nav-item" data-page="stable-profit"><span class="icon">🏆</span><span class="label">稳定盈利</span></button>
+        <button class="nav-item" data-page="trade-risk"><span class="icon">⚠️</span><span class="label">交易风控</span></button>
+        <div class="nav-divider"></div>
+        <button class="nav-item" data-page="user-profile"><span class="icon">👤</span><span class="label">用户画像</span></button>
+    </nav>
+
+    <!-- ===== 主内容 ===== -->
+    <div class="main">
+        <div class="top-bar">
+            <div class="page-title" id="pageTitle">总览仪表盘 <small>全局决策起点</small></div>
+            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                <div class="pair-selector">
+                    <label>交易对</label>
+                    <select id="globalPairSelector">
+                        <option value="BTC/USDT">BTC/USDT</option>
+                        <option value="ETH/USDT">ETH/USDT</option>
+                        <option value="SOL/USDT">SOL/USDT</option>
+                        <option value="BNB/USDT">BNB/USDT</option>
+                    </select>
+                </div>
+                <div class="clock" id="clockDisplay">--:--:--</div>
+            </div>
+        </div>
+
+        <div class="page-container">
+
+            <!-- ========================================================= -->
+            <!-- 页面1：总览仪表盘 -->
+            <!-- ========================================================= -->
+            <div id="page-dashboard" class="page active">
+                <div class="kpi-grid" id="dashboardKPI">
+                    <div class="kpi-item" onclick="navigateTo('detail-holders')">
+                        <div class="label">真实浮动筹码</div>
+                        <div class="value" id="kpiFloatSupply">1,502<span class="unit">万</span></div>
+                        <div class="sub" id="kpiFloatSupplySub">占总流通 50.1%</div>
+                    </div>
+                    <div class="kpi-item" onclick="navigateTo('detail-orders')">
+                        <div class="label">盘口失衡比</div>
+                        <div class="value" style="color:#4cd9a0;" id="kpiObi">+0.32</div>
+                        <div class="sub" id="kpiObiSub">买盘偏厚</div>
+                    </div>
+                    <div class="kpi-item" onclick="navigateTo('detail-holders')">
+                        <div class="label">价格偏离成本</div>
+                        <div class="value" style="color:#ffb347;" id="kpiPriceDev">+18.5<span class="unit">%</span></div>
+                        <div class="sub" id="kpiPriceDevSub">平均成本 0.86U</div>
+                    </div>
+                    <div class="kpi-item" onclick="navigateTo('detail-orders')">
+                        <div class="label">活跃挂单转化率</div>
+                        <div class="value" id="kpiActiveOrder">3.2<span class="unit">%</span></div>
+                        <div class="sub" id="kpiActiveOrderSub">惜售严重</div>
+                    </div>
+                    <div class="kpi-item" onclick="navigateTo('detail-holders')">
+                        <div class="label">机器人库存占比</div>
+                        <div class="value" style="color:#6a9aff;" id="kpiRobotInv">42<span class="unit">%</span></div>
+                        <div class="sub" id="kpiRobotInvSub">安全区间</div>
+                    </div>
+                    <div class="kpi-item" onclick="navigateTo('detail-whales')">
+                        <div class="label">外部不可控筹码</div>
+                        <div class="value" style="color:#ff6b7a;" id="kpiExternal">28<span class="unit">%</span></div>
+                        <div class="sub" id="kpiExternalSub">潜在抛压可控</div>
+                    </div>
+                </div>
+                <div class="grid-3">
+                    <div class="card clickable" onclick="navigateTo('detail-orders')">
+                        <div class="card-header"><span>📊 盘口深度缩略</span><span class="badge" id="dashDepthBadge">前5档</span></div>
+                        <div id="dashDepth" class="chart-box short"></div>
+                    </div>
+                    <div class="card clickable" onclick="navigateTo('detail-holders')">
+                        <div class="card-header"><span>🏔️ 筹码密集峰</span><span class="badge" id="dashCostBadge">现价 1.02</span></div>
+                        <div id="dashCost" class="chart-box short"></div>
+                    </div>
+                    <div class="card clickable" onclick="navigateTo('detail-whales')">
+                        <div class="card-header"><span>🐋 巨鲸动态</span><span class="badge" id="dashWhaleBadge">1条新警报</span></div>
+                        <div id="dashWhale" class="chart-box short"></div>
+                    </div>
+                </div>
+                <div class="card clickable" onclick="navigateTo('detail-whales')">
+                    <div class="card-header"><span>🚨 警报摘要</span><span class="badge" id="alertSummaryBadge">3条待处理</span></div>
+                    <div style="display:flex; gap:20px; font-size:12px;" id="alertSummaryDetail">
+                        <span><span style="color:#ff5a7a;">●</span> 熔断待命</span>
+                        <span><span style="color:#ffb347;">●</span> 失衡预警</span>
+                        <span><span style="color:#4a8aff;">●</span> 巨鲸充值 230万</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========================================================= -->
+            <!-- 页面2：盘口微观 -->
+            <!-- ========================================================= -->
+            <div id="page-orderbook" class="page">
+                <div class="config-bar">
+                    <div class="group">
+                        <label>📊 盘口深度档位</label>
+                        <select id="cfgDepthLevels" onchange="onDepthChange(this.value)">
+                            <option value="10">10档</option>
+                            <option value="15">15档</option>
+                            <option value="20">20档</option>
+                        </select>
+                        <span class="hint">调整后立即生效</span>
+                    </div>
+                </div>
+                <div class="grid-3">
+                    <div class="card clickable" onclick="navigateTo('detail-orders')">
+                        <div class="card-header"><span>📊 加权深度矩阵</span><span class="badge" id="obDepthBadge">买/卖前10</span></div>
+                        <div id="obDepth" class="chart-box"></div>
+                    </div>
+                    <div class="card clickable" onclick="navigateTo('detail-orders')">
+                        <div class="card-header"><span>📈 逐笔足迹</span><span class="badge">Taker净买</span></div>
+                        <div id="obFootprint" class="chart-box"></div>
+                    </div>
+                    <div class="card clickable" onclick="navigateTo('detail-orders')">
+                        <div class="card-header"><span>⚖️ OBI指数</span><span class="badge">剔除机器人</span></div>
+                        <div id="obOBI" class="chart-box"></div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header"><span>📋 挂单明细 (前20档)</span><span class="badge">点击行查看完整列表</span></div>
+                    <div class="table-wrap">
+                        <table>
+                            <thead><tr><th>价格</th><th>类型</th><th>数量(万)</th><th>账户标签</th><th>挂单时间</th><th>撤单次数</th></tr></thead>
+                            <tbody id="orderbookTableBody">
+                                <tr class="clickable" onclick="navigateTo('detail-orders')"><td>1.02</td><td><span class="tag robot">卖</span></td><td>12</td><td>机器人 #A3</td><td>09:32:15</td><td>1</td></tr>
+                                <tr class="clickable" onclick="navigateTo('detail-orders')"><td>1.01</td><td><span class="tag user">买</span></td><td>8.5</td><td>用户 4***7</td><td>09:40:02</td><td>0</td></tr>
+                                <tr class="clickable" onclick="navigateTo('detail-orders')"><td>1.03</td><td><span class="tag robot">卖</span></td><td>20</td><td>量化 #Q9</td><td>09:28:44</td><td>12</td></tr>
+                                <tr class="clickable" onclick="navigateTo('detail-orders')"><td>0.99</td><td><span class="tag user">买</span></td><td>35</td><td>用户 1***0</td><td>09:10:11</td><td>0</td></tr>
+                                <tr class="clickable" onclick="navigateTo('detail-orders')"><td>1.05</td><td><span class="tag robot">卖</span></td><td>18</td><td>机器人 #B7</td><td>09:45:33</td><td>2</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========================================================= -->
+            <!-- 页面3：筹码行为 -->
+            <!-- ========================================================= -->
+            <div id="page-position" class="page">
+                <div class="grid-2">
+                    <div class="card clickable" onclick="navigateTo('detail-holders')">
+                        <div class="card-header"><span>🏔️ 成本带分布</span><span class="badge" id="posCostBadge">密集峰 1.00</span></div>
+                        <div id="posCost" class="chart-box tall"></div>
+                    </div>
+                    <div class="card clickable" onclick="navigateTo('detail-holders')">
+                        <div class="card-header"><span>⏳ 持仓时间分层</span><span class="badge">惜售监测</span></div>
+                        <div id="posTime" class="chart-box tall"></div>
+                    </div>
+                </div>
+                <div class="grid-2">
+                    <div class="card clickable" onclick="navigateTo('detail-holders')">
+                        <div class="card-header"><span>😰 浮盈/浮亏压力</span><span class="badge" id="posPnLBadge">盈利率 58%</span></div>
+                        <div id="posPnL" class="chart-box"></div>
+                    </div>
+                    <div class="card clickable" onclick="navigateTo('detail-holders')">
+                        <div class="card-header"><span>📋 持仓用户列表</span><span class="badge">点击查看完整列表</span></div>
+                        <div class="table-wrap">
+                            <table>
+                                <thead><tr><th>用户ID</th><th>持仓(万)</th><th>成本(U)</th><th>浮盈亏(U)</th><th>最后活跃</th></tr></thead>
+                                <tbody id="holderTableBody">
+                                    <tr class="clickable" onclick="navigateTo('detail-holders')"><td>3***2</td><td>280</td><td>0.82</td><td style="color:#4cd9a0;">+56.2k</td><td>今日 08:20</td></tr>
+                                    <tr class="clickable" onclick="navigateTo('detail-holders')"><td>7***1</td><td>150</td><td>1.05</td><td style="color:#ff5a7a;">-4.5k</td><td>昨日 22:10</td></tr>
+                                    <tr class="clickable" onclick="navigateTo('detail-holders')"><td>2***8</td><td>120</td><td>0.95</td><td style="color:#4cd9a0;">+8.4k</td><td>今日 07:45</td></tr>
+                                    <tr class="clickable" onclick="navigateTo('detail-holders')"><td>9***4</td><td>88</td><td>1.01</td><td style="color:#ffb347;">+0.2k</td><td>昨日 14:30</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========================================================= -->
+            <!-- 页面4：机器人风控 -->
+            <!-- ========================================================= -->
+            <div id="page-risk" class="page">
+                <div class="config-bar">
+                    <div class="group">
+                        <label>📉 库存低水位</label>
+                        <input type="number" id="cfgInventoryLow" min="0" max="100" step="1" onchange="onRiskConfigChange()" />
+                        <span class="hint">%</span>
+                    </div>
+                    <div class="group">
+                        <label>📈 库存高水位</label>
+                        <input type="number" id="cfgInventoryHigh" min="0" max="100" step="1" onchange="onRiskConfigChange()" />
+                        <span class="hint">%</span>
+                    </div>
+                    <div class="group">
+                        <label>🔄 对倒占比阈值</label>
+                        <input type="number" id="cfgWashThreshold" min="0" max="100" step="1" onchange="onRiskConfigChange()" />
+                        <span class="hint">%</span>
+                    </div>
+                </div>
+                <div class="grid-2">
+                    <div class="card clickable" onclick="navigateTo('detail-holders')">
+                        <div class="card-header"><span>🛡️ 库存安全边际</span><span class="badge" id="riskGaugeBadge">42%</span></div>
+                        <div id="riskGauge" class="chart-box tall"></div>
+                    </div>
+                    <div class="card clickable" onclick="navigateTo('detail-orders')">
+                        <div class="card-header"><span>🎯 画线偏离度</span><span class="badge" id="riskDevBadge">偏差 +2.1%</span></div>
+                        <div id="riskDeviation" class="chart-box tall"></div>
+                    </div>
+                </div>
+                <div class="grid-2">
+                    <div class="card clickable" onclick="navigateTo('detail-orders')">
+                        <div class="card-header"><span>🔄 对倒/换手率</span><span class="badge" id="riskWashBadge">对倒 52%</span></div>
+                        <div id="riskWash" class="chart-box"></div>
+                    </div>
+                    <div class="card clickable" onclick="navigateTo('detail-orders')">
+                        <div class="card-header"><span>📉 逐笔盈亏滑动窗</span><span class="badge">最近1h</span></div>
+                        <div id="riskPnL" class="chart-box"></div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header"><span>⚙️ 策略参数面板</span><span class="badge">点击数值查看详情</span></div>
+                    <div style="display:flex; gap:20px; flex-wrap:wrap; padding:4px 0;">
+                        <div><span class="text-muted">价差倍数</span> <strong style="color:#fff;" id="riskSpreadDisplay">1.2x</strong></div>
+                        <div><span class="text-muted">最大挂单量</span> <strong style="color:#fff;" id="riskMaxOrderDisplay">50万</strong></div>
+                        <div><span class="text-muted">库存目标区间</span> <strong style="color:#fff;" id="riskTargetRange">40%-60%</strong></div>
+                        <div><span class="text-muted">对倒比例阈值</span> <strong style="color:#fff;" id="riskWashThreshold">≤65%</strong></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========================================================= -->
+            <!-- 页面5：宏观威胁 -->
+            <!-- ========================================================= -->
+            <div id="page-macro" class="page">
+                <div class="config-bar">
+                    <div class="group">
+                        <label>🐋 巨鲸阈值</label>
+                        <input type="number" id="cfgWhaleThreshold" min="1" step="1" onchange="onWhaleConfigChange()" />
+                        <span class="hint">万枚</span>
+                    </div>
+                </div>
+                <div class="grid-2">
+                    <div class="card clickable" onclick="navigateTo('detail-whales')">
+                        <div class="card-header"><span>⛓️ 充提净流量</span><span class="badge" id="macroNetflowBadge">1h +23万</span></div>
+                        <div id="macroNetflow" class="chart-box"></div>
+                    </div>
+                    <div class="card clickable" onclick="navigateTo('detail-whales')">
+                        <div class="card-header"><span>💣 外部炸弹估算</span><span class="badge" id="macroBombBadge">剩余 28%</span></div>
+                        <div id="macroBomb" class="chart-box"></div>
+                    </div>
+                </div>
+                <div class="grid-2">
+                    <div class="card clickable" onclick="navigateTo('detail-whales')">
+                        <div class="card-header"><span>🐋 巨鲸充值警报</span><span class="badge" id="macroWhaleBadge">1条未处理</span></div>
+                        <div class="table-wrap">
+                            <table>
+                                <thead><tr><th>时间</th><th>地址(脱敏)</th><th>金额(万)</th><th>状态</th></tr></thead>
+                                <tbody id="macroWhaleTableBody">
+                                    <tr class="clickable" onclick="navigateTo('detail-whales')"><td>10:23</td><td>0x7f3...a2</td><td>230</td><td><span class="tag alert">红色</span></td></tr>
+                                    <tr class="clickable" onclick="navigateTo('detail-whales')"><td>09:50</td><td>0x1a9...b4</td><td>45</td><td><span class="tag user">监控中</span></td></tr>
+                                    <tr class="clickable" onclick="navigateTo('detail-whales')"><td>08:15</td><td>0x4c2...d7</td><td>18</td><td><span class="tag user">已处理</span></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card clickable" onclick="navigateTo('detail-whales')">
+                        <div class="card-header"><span>📰 大盘情绪映射</span><span class="badge">联动参考</span></div>
+                        <div id="macroSentiment" class="chart-box"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========================================================= -->
+            <!-- 详情页1：挂单明细 -->
+            <!-- ========================================================= -->
+            <div id="page-detail-orders" class="page">
+                <div class="card detail-table-card">
+                    <div class="card-header"><span>📋 完整挂单明细 (实时)</span><span class="badge" id="detailOrderBadge">共42笔挂单</span></div>
+                    <div class="table-wrap">
+                        <table>
+                            <thead><tr><th>价格</th><th>类型</th><th>数量(万)</th><th>账户标签</th><th>挂单时间</th><th>撤单次数</th><th>累计成交(万)</th></tr></thead>
+                            <tbody id="detailOrderTableBody">
+                                <tr><td>1.12</td><td><span class="tag robot">卖</span></td><td>8.2</td><td>机器人 #C2</td><td>10:12:03</td><td>0</td><td>1.5</td></tr>
+                                <tr><td>1.10</td><td><span class="tag robot">卖</span></td><td>15.0</td><td>机器人 #A3</td><td>10:05:22</td><td>1</td><td>6.0</td></tr>
+                                <tr><td>1.08</td><td><span class="tag user">卖</span></td><td>4.3</td><td>用户 5***9</td><td>09:58:10</td><td>0</td><td>0.0</td></tr>
+                                <tr><td>1.06</td><td><span class="tag robot">卖</span></td><td>22.0</td><td>量化 #Q9</td><td>09:45:33</td><td>5</td><td>18.0</td></tr>
+                                <tr><td>1.04</td><td><span class="tag user">卖</span></td><td>6.7</td><td>用户 8***2</td><td>09:30:15</td><td>2</td><td>1.2</td></tr>
+                                <tr><td>1.02</td><td><span class="tag robot">卖</span></td><td>12.0</td><td>机器人 #B7</td><td>09:20:44</td><td>0</td><td>8.0</td></tr>
+                                <tr><td>1.01</td><td><span class="tag user">买</span></td><td>8.5</td><td>用户 4***7</td><td>09:40:02</td><td>0</td><td>0.0</td></tr>
+                                <tr><td>0.99</td><td><span class="tag user">买</span></td><td>35.0</td><td>用户 1***0</td><td>09:10:11</td><td>0</td><td>20.0</td></tr>
+                                <tr><td>0.97</td><td><span class="tag robot">买</span></td><td>18.0</td><td>机器人 #D5</td><td>08:55:30</td><td>1</td><td>12.0</td></tr>
+                                <tr><td>0.95</td><td><span class="tag user">买</span></td><td>6.2</td><td>用户 2***3</td><td>08:40:18</td><td>0</td><td>6.2</td></tr>
+                                <tr><td>0.93</td><td><span class="tag robot">买</span></td><td>10.0</td><td>机器人 #E1</td><td>08:25:55</td><td>0</td><td>10.0</td></tr>
+                                <tr><td>0.91</td><td><span class="tag user">买</span></td><td>4.1</td><td>用户 9***6</td><td>08:10:07</td><td>0</td><td>0.0</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="grid-2">
+                    <div class="card">
+                        <div class="card-header"><span>📊 挂单量分布 (按价格)</span><span class="badge">买卖对比</span></div>
+                        <div id="detailOrderChart1" class="chart-box"></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header"><span>📈 撤单频率 Top 5</span><span class="badge">高频撤单</span></div>
+                        <div id="detailOrderChart2" class="chart-box"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========================================================= -->
+            <!-- 详情页2：持仓明细 -->
+            <!-- ========================================================= -->
+            <div id="page-detail-holders" class="page">
+                <div class="card detail-table-card">
+                    <div class="card-header"><span>👥 完整持仓用户列表</span><span class="badge" id="detailHolderBadge">共128位用户</span></div>
+                    <div class="table-wrap">
+                        <table>
+                            <thead><tr><th>用户ID</th><th>持仓(万)</th><th>成本(U)</th><th>浮盈亏(U)</th><th>盈亏比</th><th>最后活跃</th><th>持仓天数</th></tr></thead>
+                            <tbody id="detailHolderTableBody">
+                                <tr><td>3***2</td><td>280</td><td>0.82</td><td style="color:#4cd9a0;">+56.2k</td><td>+24%</td><td>今日 08:20</td><td>12</td></tr>
+                                <tr><td>7***1</td><td>150</td><td>1.05</td><td style="color:#ff5a7a;">-4.5k</td><td>-3%</td><td>昨日 22:10</td><td>8</td></tr>
+                                <tr><td>2***8</td><td>120</td><td>0.95</td><td style="color:#4cd9a0;">+8.4k</td><td>+7%</td><td>今日 07:45</td><td>5</td></tr>
+                                <tr><td>9***4</td><td>88</td><td>1.01</td><td style="color:#ffb347;">+0.2k</td><td>+0.2%</td><td>昨日 14:30</td><td>3</td></tr>
+                                <tr><td>4***5</td><td>76</td><td>0.88</td><td style="color:#4cd9a0;">+10.6k</td><td>+16%</td><td>今日 09:10</td><td>9</td></tr>
+                                <tr><td>1***0</td><td>65</td><td>0.99</td><td style="color:#4cd9a0;">+2.0k</td><td>+3%</td><td>今日 08:55</td><td>2</td></tr>
+                                <tr><td>6***7</td><td>52</td><td>1.10</td><td style="color:#ff5a7a;">-4.2k</td><td>-7%</td><td>昨日 20:15</td><td>6</td></tr>
+                                <tr><td>8***3</td><td>48</td><td>0.92</td><td style="color:#4cd9a0;">+4.8k</td><td>+11%</td><td>今日 06:30</td><td>4</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="grid-2">
+                    <div class="card">
+                        <div class="card-header"><span>📊 持仓集中度</span><span class="badge">前10名占比</span></div>
+                        <div id="detailHolderChart1" class="chart-box"></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header"><span>📈 持仓成本分布 (完整)</span><span class="badge">按价格区间</span></div>
+                        <div id="detailHolderChart2" class="chart-box"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========================================================= -->
+            <!-- 详情页3：巨鲸警报 -->
+            <!-- ========================================================= -->
+            <div id="page-detail-whales" class="page">
+                <div class="card detail-table-card">
+                    <div class="card-header"><span>🐋 巨鲸充值/提现警报记录</span><span class="badge" id="whaleTableBadge">最近24h</span></div>
+                    <div class="table-wrap">
+                        <table>
+                            <thead><tr><th>时间</th><th>地址(脱敏)</th><th>操作</th><th>金额(万)</th><th>状态</th><th>备注</th></tr></thead>
+                            <tbody id="whaleDetailTableBody">
+                                <tr><td>10:23</td><td>0x7f3...a2</td><td>充值</td><td>230</td><td><span class="tag alert">红色</span></td><td>历史持仓500万</td></tr>
+                                <tr><td>09:50</td><td>0x1a9...b4</td><td>充值</td><td>45</td><td><span class="tag user">监控中</span></td><td>新地址</td></tr>
+                                <tr><td>08:15</td><td>0x4c2...d7</td><td>提现</td><td>18</td><td><span class="tag user">已处理</span></td><td>锁仓操作</td></tr>
+                                <tr><td>07:40</td><td>0x9e1...f3</td><td>充值</td><td>120</td><td><span class="tag alert">红色</span></td><td>大额流入</td></tr>
+                                <tr><td>06:10</td><td>0x2b8...c5</td><td>充值</td><td>32</td><td><span class="tag user">监控中</span></td><td>关联交易所</td></tr>
+                                <tr><td>04:55</td><td>0x6d4...a9</td><td>提现</td><td>10</td><td><span class="tag user">已处理</span></td><td>正常提现</td></tr>
+                                <tr><td>03:20</td><td>0x8a1...e7</td><td>充值</td><td>67</td><td><span class="tag user">监控中</span></td><td>疑似分拆</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="grid-2">
+                    <div class="card">
+                        <div class="card-header"><span>📊 充值/提现净额趋势</span><span class="badge">小时级</span></div>
+                        <div id="detailWhaleChart1" class="chart-box"></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header"><span>📈 巨鲸持仓集中度</span><span class="badge">前10地址</span></div>
+                        <div id="detailWhaleChart2" class="chart-box"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========================================================= -->
+            <!-- 页面：稳定盈利账户 -->
+            <!-- ========================================================= -->
+            <div id="page-stable-profit" class="page">
+                <div class="filter-panel">
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                        <span style="font-size:12px; color:#5a7a9a;">🔧 筛选参数</span>
+                        <span id="filterStatus" style="font-size:11px; color:#4a6080;">（当前使用全局配置）</span>
+                    </div>
+                    <div class="filter-grid">
+                        <div class="filter-group">
+                            <label>📈 胜天数占比 (%)</label>
+                            <input type="number" id="filterWinDaysRatio" min="0" max="100" step="1" />
+                        </div>
+                        <div class="filter-group">
+                            <label>📊 单笔收益贡献率 (%)</label>
+                            <input type="number" id="filterSingleGainRatio" min="0" max="100" step="1" />
+                        </div>
+                        <div class="filter-group">
+                            <label>📉 最大回撤 (%)</label>
+                            <input type="number" id="filterMaxDrawdown" min="0" max="100" step="1" />
+                        </div>
+                        <div class="filter-group">
+                            <label>🔄 回撤修复周期 (天)</label>
+                            <input type="number" id="filterRecoveryDays" min="1" step="1" />
+                        </div>
+                        <div class="filter-group">
+                            <label>📋 总交易笔数</label>
+                            <input type="number" id="filterTotalTrades" min="1" step="1" />
+                        </div>
+                        <div class="filter-group">
+                            <label>📅 活跃天数</label>
+                            <input type="number" id="filterActiveDays" min="1" step="1" />
+                        </div>
+                    </div>
+                    <div class="filter-actions">
+                        <button class="btn-sm primary" onclick="applyFilter()">✅ 应用筛选</button>
+                        <button class="btn-sm secondary" onclick="saveFilterToGlobal()">💾 保存为全局配置</button>
+                        <button class="btn-sm secondary" onclick="resetFilterToGlobal()">↩️ 重置为全局</button>
+                        <span id="filterFeedback" style="font-size:11px; color:#4cd9a0;"></span>
+                    </div>
+                </div>
+
+                <div class="threshold-summary" id="stableThresholdSummary"></div>
+
+                <div class="stable-summary-cards">
+                    <div class="stat-card"><div class="num" id="totalAccounts">0</div><div class="desc">总账户数</div></div>
+                    <div class="stat-card"><div class="num" id="stableCount">0</div><div class="desc">稳定盈利账户</div></div>
+                    <div class="stat-card"><div class="num" id="stableRatio">0%</div><div class="desc">占比</div></div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header"><span>📖 账户分类与行为特征</span><span class="badge">决策树</span></div>
+                    <div style="font-size:12px; color:#b0c8e8; line-height:1.8;">
+                        <p><strong>正常交易高手（合规盈利）</strong><br/>
+                        • <span style="color:#4cd9a0;">手动高手</span>：持仓时间分布宽，附带止损止盈，跟随主流。<br/>
+                        • <span style="color:#6a9aff;">程序化量化/CTA</span>：高频/中频，规则化，高胜率低回撤或中等胜率高盈亏比。</p>
+                        <p><strong style="color:#ffb347;">恶意套利与漏洞利用（重点风控）</strong><br/>
+                        • <span style="color:#ff5a7a;">恶意高频/延迟套利</span>：持仓<2秒，胜率>90%，极高撤单率，IOC/FOK指令，集中小币种。<br/>
+                        • <span style="color:#ff5a7a;">资金费率/机制套利</span>：盈利源于费率派息或清算机制，多账户同步、对打、同IP/设备。</p>
+                    </div>
+                </div>
+
+                <div class="card detail-table-card">
+                    <div class="card-header"><span>📋 账户筛查结果</span><span class="badge" id="stableTableBadge">应用配置阈值</span></div>
+                    <div class="table-wrap">
+                        <table>
+                            <thead><tr><th>账户ID</th><th>类型</th><th>胜天数占比</th><th>单笔收益贡献率</th><th>最大回撤</th><th>回撤修复(天)</th><th>总交易笔数</th><th>活跃天数</th><th>稳定盈利</th></tr></thead>
+                            <tbody id="stableAccountTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="grid-2">
+                    <div class="card">
+                        <div class="card-header"><span>📊 账户类型分布</span><span class="badge">按分类</span></div>
+                        <div id="stableTypeChart" class="chart-box"></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header"><span>📈 稳定盈利 vs 非稳定</span><span class="badge">对比</span></div>
+                        <div id="stableCompareChart" class="chart-box"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========================================================= -->
+            <!-- 页面：交易风控 -->
+            <!-- ========================================================= -->
+            <div id="page-trade-risk" class="page">
+                <div class="config-bar">
+                    <div class="group">
+                        <label>📈 交易频率阈值</label>
+                        <input type="number" id="cfgTradeFreq" min="1" step="1" onchange="onTradeRiskConfigChange()" />
+                        <span class="hint">笔/分钟</span>
+                    </div>
+                    <div class="group">
+                        <label>📊 挂撤单频率阈值</label>
+                        <input type="number" id="cfgCancelFreq" min="1" step="1" onchange="onTradeRiskConfigChange()" />
+                        <span class="hint">次/分钟</span>
+                    </div>
+                    <div class="group">
+                        <label>📉 交易量占比阈值</label>
+                        <input type="number" id="cfgVolumeRatio" min="0" max="100" step="1" onchange="onTradeRiskConfigChange()" />
+                        <span class="hint">%</span>
+                    </div>
+                    <div class="group">
+                        <label>📈 价格变动幅度阈值</label>
+                        <input type="number" id="cfgPriceChange" min="0" max="100" step="0.5" onchange="onTradeRiskConfigChange()" />
+                        <span class="hint">%</span>
+                    </div>
+                    <div class="group">
+                        <label>🔄 小额撤单阈值</label>
+                        <input type="number" id="cfgSmallCancel" min="1" step="1" onchange="onTradeRiskConfigChange()" />
+                        <span class="hint">次/分钟</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header"><span>📡 流动性监控状态</span><span class="badge">实时</span></div>
+                    <div class="monitor-status" id="monitorStatus">
+                        <div class="status-item"><span class="status-dot green"></span> 量化程序运行正常</div>
+                        <div class="status-item"><span class="status-dot green"></span> 盘口活跃度正常</div>
+                        <div class="status-item"><span class="status-dot yellow"></span> 远端大单挂单预警 (1.05U 挂单 80万枚)</div>
+                    </div>
+                </div>
+
+                <div class="kpi-grid" id="tradeRiskKPI">
+                    <div class="kpi-item">
+                        <div class="label">今日报警总数</div>
+                        <div class="value" style="color:#ff5a7a;" id="kpiAlertsTotal">12</div>
+                        <div class="sub" id="kpiAlertsTotalSub">较昨日 +5</div>
+                    </div>
+                    <div class="kpi-item">
+                        <div class="label">异常账户数</div>
+                        <div class="value" style="color:#ffb347;" id="kpiAbnormalAccounts">3</div>
+                        <div class="sub" id="kpiAbnormalAccountsSub">待处理</div>
+                    </div>
+                    <div class="kpi-item">
+                        <div class="label">高频交易账户</div>
+                        <div class="value" style="color:#ffb347;" id="kpiHighFreq">2</div>
+                        <div class="sub" id="kpiHighFreqSub">交易频率超标</div>
+                    </div>
+                    <div class="kpi-item">
+                        <div class="label">挂撤单异常</div>
+                        <div class="value" style="color:#ff5a7a;" id="kpiCancelAbnormal">1</div>
+                        <div class="sub" id="kpiCancelAbnormalSub">疑似测试延迟</div>
+                    </div>
+                    <div class="kpi-item">
+                        <div class="label">价格操纵嫌疑</div>
+                        <div class="value" style="color:#ff5a7a;" id="kpiPriceManip">1</div>
+                        <div class="sub" id="kpiPriceManipSub">短时间内拉盘</div>
+                    </div>
+                    <div class="kpi-item">
+                        <div class="label">大额挂单预警</div>
+                        <div class="value" style="color:#ffb347;" id="kpiLargeOrder">2</div>
+                        <div class="sub" id="kpiLargeOrderSub">远端大单</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header"><span>🚨 实时报警列表</span><span class="badge">最新10条</span></div>
+                    <div class="alert-list">
+                        <table>
+                            <thead><tr><th>时间</th><th>账户</th><th>类型</th><th>详情</th><th>状态</th></tr></thead>
+                            <tbody id="alertListBody">
+                                <tr><td>10:23:15</td><td>ACC1024</td><td><span class="tag danger">交易频率</span></td><td>交易频率 25笔/分钟 (阈值20)</td><td><span class="tag alert">未处理</span></td></tr>
+                                <tr><td>10:20:08</td><td>ACC2048</td><td><span class="tag danger">挂撤单异常</span></td><td>挂撤单 18次/分钟 (阈值15)</td><td><span class="tag alert">未处理</span></td></tr>
+                                <tr><td>10:15:32</td><td>ACC3072</td><td><span class="tag warning">交易量占比</span></td><td>1h交易量占比 15% (阈值10%)</td><td><span class="tag warning">监控中</span></td></tr>
+                                <tr><td>10:10:44</td><td>ACC4096</td><td><span class="tag danger">价格操纵</span></td><td>5分钟内拉盘 8% (阈值5%)</td><td><span class="tag alert">未处理</span></td></tr>
+                                <tr><td>10:05:11</td><td>ACC5120</td><td><span class="tag warning">小额撤单</span></td><td>小额挂撤 12次/分钟 (阈值10)</td><td><span class="tag warning">监控中</span></td></tr>
+                                <tr><td>09:58:03</td><td>—</td><td><span class="tag warning">大额挂单</span></td><td>卖一远端 1.05U 挂单 80万枚</td><td><span class="tag warning">已预警</span></td></tr>
+                                <tr><td>09:50:21</td><td>ACC6144</td><td><span class="tag danger">交易频率</span></td><td>交易频率 22笔/分钟 (阈值20)</td><td><span class="tag success">已处理</span></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="grid-2">
+                    <div class="card">
+                        <div class="card-header"><span>📊 异常类型分布</span><span class="badge">按类别</span></div>
+                        <div id="riskTypeChart" class="chart-box"></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header"><span>📈 报警趋势 (近1小时)</span><span class="badge">时间线</span></div>
+                        <div id="riskTrendChart" class="chart-box"></div>
+                    </div>
+                </div>
+
+                <div class="card detail-table-card">
+                    <div class="card-header"><span>⚠️ 异常账户明细</span><span class="badge">触发规则</span></div>
+                    <div class="table-wrap">
+                        <table>
+                            <thead><tr><th>账户ID</th><th>触发规则</th><th>当前值</th><th>阈值</th><th>首次触发时间</th><th>状态</th></tr></thead>
+                            <tbody id="abnormalAccountBody">
+                                <tr><td>ACC1024</td><td>交易频率超标</td><td>25笔/分钟</td><td>20笔/分钟</td><td>10:23:15</td><td><span class="tag alert">未处理</span></td></tr>
+                                <tr><td>ACC2048</td><td>挂撤单异常</td><td>18次/分钟</td><td>15次/分钟</td><td>10:20:08</td><td><span class="tag alert">未处理</span></td></tr>
+                                <tr><td>ACC3072</td><td>交易量占比超标</td><td>15%</td><td>10%</td><td>10:15:32</td><td><span class="tag warning">监控中</span></td></tr>
+                                <tr><td>ACC4096</td><td>价格操纵</td><td>8% / 5min</td><td>5% / 5min</td><td>10:10:44</td><td><span class="tag alert">未处理</span></td></tr>
+                                <tr><td>ACC5120</td><td>小额撤单测试</td><td>12次/分钟</td><td>10次/分钟</td><td>10:05:11</td><td><span class="tag warning">监控中</span></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========================================================= -->
+            <!-- 页面：用户画像（规则配置内嵌） -->
+            <!-- ========================================================= -->
+            <div id="page-user-profile" class="page">
+                <!-- 规则配置面板（内嵌） -->
+                <div class="rule-panel">
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                        <span style="font-size:12px; color:#5a7a9a;">📐 用户标签规则配置</span>
+                        <span id="ruleStatus" style="font-size:10px; color:#4a6080;">修改后点击保存</span>
+                    </div>
+                    <div class="rule-grid">
+                        <!-- 聪明钱 -->
+                        <div style="grid-column: 1 / -1; padding-bottom: 12px; margin-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.06);">
+                            <div class="rule-section-title" style="margin:0 0 8px 0; border:none; padding:0;">🏷️ 聪明钱</div>
+                            <div style="display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center;">
+                                <div style="display: flex; align-items: center; gap: 4px; white-space: nowrap;">
+                                    <label style="font-size: 11px; color: #b0c8e8;">交易笔数 ≥</label>
+                                    <input type="number" id="ruleSmartTradeCount" value="15" min="1" style="width: 55px; background: #0b111f; border: 1px solid #1a2848; border-radius: 4px; padding: 2px 4px; color: #e8f0ff; font-size: 12px;" />
+                                    <span style="font-size: 10px; color: #4a6080;">笔</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 4px; white-space: nowrap;">
+                                    <label style="font-size: 11px; color: #b0c8e8;">胜率 ≥</label>
+                                    <input type="number" id="ruleSmartWinRate" value="60" min="0" max="100" style="width: 55px; background: #0b111f; border: 1px solid #1a2848; border-radius: 4px; padding: 2px 4px; color: #e8f0ff; font-size: 12px;" />
+                                    <span style="font-size: 10px; color: #4a6080;">%</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 4px; white-space: nowrap;">
+                                    <label style="font-size: 11px; color: #b0c8e8;">盈亏比 ≥</label>
+                                    <input type="number" id="ruleSmartProfitRatio" value="1.5" min="0" step="0.1" style="width: 55px; background: #0b111f; border: 1px solid #1a2848; border-radius: 4px; padding: 2px 4px; color: #e8f0ff; font-size: 12px;" />
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 4px; white-space: nowrap;">
+                                    <label style="font-size: 11px; color: #b0c8e8;">单笔仓位 ≥</label>
+                                    <input type="number" id="ruleSmartPosition" value="2" min="0" step="0.1" style="width: 55px; background: #0b111f; border: 1px solid #1a2848; border-radius: 4px; padding: 2px 4px; color: #e8f0ff; font-size: 12px;" />
+                                    <span style="font-size: 10px; color: #4a6080;">倍</span>
+                                </div>
+                            </div>
+                        </div>
+                    
+                        <!-- 散户 -->
+                        <div style="grid-column: 1 / -1; padding-bottom: 12px; margin-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.06);">
+                            <div class="rule-section-title retail" style="margin:0 0 8px 0; border:none; padding:0;">🏷️ 散户</div>
+                            <div style="display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center;">
+                                <div style="display: flex; align-items: center; gap: 4px; white-space: nowrap;">
+                                    <label style="font-size: 11px; color: #b0c8e8;">交易笔数 ≥</label>
+                                    <input type="number" id="ruleRetailTradeCount" value="15" min="1" style="width: 55px; background: #0b111f; border: 1px solid #1a2848; border-radius: 4px; padding: 2px 4px; color: #e8f0ff; font-size: 12px;" />
+                                    <span style="font-size: 10px; color: #4a6080;">笔</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 4px; white-space: nowrap;">
+                                    <label style="font-size: 11px; color: #b0c8e8;">净收益</label>
+                                    <select id="ruleRetailNetProfit" style="width: 75px; background: #0b111f; border: 1px solid #1a2848; border-radius: 4px; padding: 2px 4px; color: #e8f0ff; font-size: 12px;">
+                                        <option value="negative">为负数</option>
+                                        <option value="positive">为正数</option>
+                                    </select>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 4px; white-space: nowrap;">
+                                    <label style="font-size: 11px; color: #b0c8e8;">胜率 ≤</label>
+                                    <input type="number" id="ruleRetailWinRate" value="40" min="0" max="100" style="width: 55px; background: #0b111f; border: 1px solid #1a2848; border-radius: 4px; padding: 2px 4px; color: #e8f0ff; font-size: 12px;" />
+                                    <span style="font-size: 10px; color: #4a6080;">%</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 4px; white-space: nowrap;">
+                                    <label style="font-size: 11px; color: #b0c8e8;">持仓时间比 ≥</label>
+                                    <input type="number" id="ruleRetailHoldRatio" value="3" min="0" step="0.5" style="width: 55px; background: #0b111f; border: 1px solid #1a2848; border-radius: 4px; padding: 2px 4px; color: #e8f0ff; font-size: 12px;" />
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 4px; white-space: nowrap;">
+                                    <label style="font-size: 11px; color: #b0c8e8;">强平率 ≥</label>
+                                    <input type="number" id="ruleRetailLiquidation" value="50" min="0" max="100" style="width: 55px; background: #0b111f; border: 1px solid #1a2848; border-radius: 4px; padding: 2px 4px; color: #e8f0ff; font-size: 12px;" />
+                                    <span style="font-size: 10px; color: #4a6080;">%</span>
+                                </div>
+                            </div>
+                        </div>
+                    
+                        <!-- 羊毛党 -->
+                        <div style="grid-column: 1 / -1; padding-bottom: 12px; margin-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.06);">
+                            <div class="rule-section-title wool" style="margin:0 0 8px 0; border:none; padding:0;">🏷️ 羊毛党</div>
+                            <div style="display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center;">
+                                <div style="display: flex; align-items: center; gap: 4px; white-space: nowrap;">
+                                    <label style="font-size: 11px; color: #b0c8e8;">同一设备 ≥</label>
+                                    <input type="number" id="ruleWoolDevice" value="3" min="1" style="width: 55px; background: #0b111f; border: 1px solid #1a2848; border-radius: 4px; padding: 2px 4px; color: #e8f0ff; font-size: 12px;" />
+                                    <span style="font-size: 10px; color: #4a6080;">个</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 4px; white-space: nowrap;">
+                                    <label style="font-size: 11px; color: #b0c8e8;">同一IP段 ≥</label>
+                                    <input type="number" id="ruleWoolIP" value="5" min="1" style="width: 55px; background: #0b111f; border: 1px solid #1a2848; border-radius: 4px; padding: 2px 4px; color: #e8f0ff; font-size: 12px;" />
+                                    <span style="font-size: 10px; color: #4a6080;">个</span>
+                                </div>
+                            </div>
+                        </div>
+                    
+                        <!-- 程序化交易 -->
+                        <div style="grid-column: 1 / -1; padding-bottom: 0; margin-bottom: 0; border-bottom: none;">
+                            <div class="rule-section-title prog" style="margin:0 0 8px 0; border:none; padding:0;">🏷️ 程序化交易</div>
+                            <div style="display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center;">
+                                <div style="display: flex; align-items: center; gap: 4px; white-space: nowrap;">
+                                    <label style="font-size: 11px; color: #b0c8e8;">持仓生命周期 ≤</label>
+                                    <input type="number" id="ruleProgHoldTime" value="1" min="0" style="width: 55px; background: #0b111f; border: 1px solid #1a2848; border-radius: 4px; padding: 2px 4px; color: #e8f0ff; font-size: 12px;" />
+                                    <span style="font-size: 10px; color: #4a6080;">分钟</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 4px; white-space: nowrap;">
+                                    <label style="font-size: 11px; color: #b0c8e8;">挂撤比 ≥</label>
+                                    <input type="number" id="ruleProgCancelRatio" value="20" min="0" style="width: 55px; background: #0b111f; border: 1px solid #1a2848; border-radius: 4px; padding: 2px 4px; color: #e8f0ff; font-size: 12px;" />
+                                    <span style="font-size: 10px; color: #4a6080;">倍</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="rule-actions">
+                        <button class="btn-sm primary" onclick="saveRuleConfig()">💾 保存规则</button>
+                        <button class="btn-sm secondary" onclick="resetRuleConfig()">↩️ 恢复默认</button>
+                        <span id="ruleFeedback" style="font-size:10px; color:#4cd9a0;"></span>
+                    </div>
+                </div>
+
+                <!-- 统计卡片 -->
+                <div class="kpi-grid">
+                    <div class="kpi-item">
+                        <div class="label">总用户数</div>
+                        <div class="value">1,284</div>
+                        <div class="sub">今日活跃 312</div>
+                    </div>
+                    <div class="kpi-item" style="border-color:#4cd9a0;">
+                        <div class="label">🏷️ 聪明钱</div>
+                        <div class="value" style="color:#4cd9a0;">42</div>
+                        <div class="sub">占比 3.3%</div>
+                    </div>
+                    <div class="kpi-item" style="border-color:#ffb347;">
+                        <div class="label">🏷️ 散户</div>
+                        <div class="value" style="color:#ffb347;">892</div>
+                        <div class="sub">占比 69.5%</div>
+                    </div>
+                    <div class="kpi-item" style="border-color:#ff5a7a;">
+                        <div class="label">🏷️ 羊毛党</div>
+                        <div class="value" style="color:#ff5a7a;">67</div>
+                        <div class="sub">占比 5.2%</div>
+                    </div>
+                    <div class="kpi-item" style="border-color:#a78bfa;">
+                        <div class="label">🏷️ 吃客损KOL</div>
+                        <div class="value" style="color:#a78bfa;">23</div>
+                        <div class="sub">占比 1.8%</div>
+                    </div>
+                    <div class="kpi-item" style="border-color:#4a8aff;">
+                        <div class="label">🏷️ 程序化交易</div>
+                        <div class="value" style="color:#4a8aff;">38</div>
+                        <div class="sub">占比 3.0%</div>
+                    </div>
+                </div>
+
+                <!-- 图表 -->
+                <div class="grid-2">
+                    <div class="card">
+                        <div class="card-header"><span>📊 用户标签分布</span><span class="badge">按类型</span></div>
+                        <div id="userTagChart" class="chart-box tall"></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header"><span>📈 标签覆盖趋势</span><span class="badge">近7天</span></div>
+                        <div id="userTagTrendChart" class="chart-box tall"></div>
+                    </div>
+                </div>
+
+                <!-- 用户列表 -->
+                <div class="card detail-table-card">
+                    <div class="card-header"><span>👤 用户标签列表</span><span class="badge">共1,284位用户</span></div>
+                    <div class="table-wrap">
+                        <table>
+                            <thead><tr><th>用户ID</th><th>注册时间</th><th>交易笔数</th><th>胜率</th><th>盈亏比</th><th>标签</th></tr></thead>
+                            <tbody id="userTagTableBody">
+                                <tr><td>ACC1024</td><td>2026-08-20</td><td>28</td><td>72%</td><td>2.1</td><td><span class="tag success">聪明钱</span></td></tr>
+                                <tr><td>ACC2048</td><td>2026-08-15</td><td>156</td><td>32%</td><td>0.4</td><td><span class="tag warning">散户</span> <span class="tag danger">低胜率</span></td></tr>
+                                <tr><td>ACC3072</td><td>2026-08-22</td><td>8</td><td>12%</td><td>0.1</td><td><span class="tag alert">羊毛党</span></td></tr>
+                                <tr><td>ACC4096</td><td>2026-08-18</td><td>34</td><td>68%</td><td>1.8</td><td><span class="tag robot">程序化交易</span></td></tr>
+                                <tr><td>ACC5120</td><td>2026-08-10</td><td>22</td><td>55%</td><td>1.2</td><td><span class="tag alert">吃客损KOL</span></td></tr>
+                                <tr><td>ACC6144</td><td>2026-08-01</td><td>45</td><td>48%</td><td>0.8</td><td><span class="tag warning">散户</span> <span class="tag danger">喜欢扛单</span></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div><!-- /page-container -->
+    </div><!-- /main -->
+
+    <!-- ============================================================ -->
+    <!-- JavaScript -->
+    <!-- ============================================================ -->
+    <script>
+        // ================================================================
+        // 交易对管理（核心）
+        // ================================================================
+        const PAIRS = ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'BNB/USDT'];
+        let currentPair = localStorage.getItem('currentPair') || PAIRS[0];
+
+        function getPairStorageKey(pair, key) {
+            return `tradingConfig_${pair.replace('/', '_')}_${key}`;
+        }
+
+        function getMockDataForPair(pair) {
+            const base = {
+                'BTC/USDT': {
+                    price: 65000,
+                    depth: [120, 200, 80, 40],
+                    cost: [80, 320, 480, 160],
+                    volume: 23,
+                    alerts: 12,
+                    obi: '+0.32',
+                    obiSub: '买盘偏厚',
+                    priceDev: '+18.5',
+                    priceDevSub: '平均成本 0.86U',
+                    activeOrder: '3.2',
+                    activeOrderSub: '惜售严重',
+                    robotInv: '42',
+                    robotInvSub: '安全区间',
+                    external: '28',
+                    externalSub: '潜在抛压可控',
+                    floatSupply: '1,502',
+                    floatSupplySub: '占总流通 50.1%',
+                    whaleAlert: '1条新警报',
+                    alertSummary: '3条待处理',
+                    alertDetail: '<span><span style="color:#ff5a7a;">●</span> 熔断待命</span><span><span style="color:#ffb347;">●</span> 失衡预警</span><span><span style="color:#4a8aff;">●</span> 巨鲸充值 230万</span>',
+                    costBadge: '密集峰 1.00',
+                    pnlBadge: '盈利率 58%',
+                    netflowBadge: '1h +23万',
+                    bombBadge: '剩余 28%',
+                    whaleBadge: '1条未处理',
+                    orderBadge: '共42笔挂单',
+                    holderBadge: '共128位用户',
+                    dashWhale: [5, 12, 8, 20, 10],
+                    obDepthBid: [80, 180, 320, 200, 90],
+                    obDepthAsk: [50, 90, 140, 280, 400],
+                    footprintBuy: [12, 25, 30, 40, 28],
+                    footprintSell: [8, 12, 18, 14, 20],
+                    footprintWash: [5, 10, 15, 18, 22],
+                    obiData: [0.12, 0.35, 0.42, 0.18, 0.32],
+                    netflowIn: [12, 25, 18, 30, 22],
+                    netflowOut: [8, 10, 15, 12, 18],
+                    sentiment: [2.1, 1.8, 3.5, -0.5, 0.8],
+                    riskAlerts: [2, 1, 3, 4, 6, 5, 8],
+                    riskTypes: [
+                        { value: 4, name: '交易频率' },
+                        { value: 3, name: '挂撤单异常' },
+                        { value: 2, name: '交易量占比' },
+                        { value: 2, name: '价格操纵' },
+                        { value: 1, name: '小额撤单' }
+                    ],
+                    abnormalAccounts: [
+                        { id: 'ACC1024', rule: '交易频率超标', val: '25笔/分钟', threshold: '20笔/分钟', time: '10:23:15',
+                            status: '未处理' },
+                        { id: 'ACC2048', rule: '挂撤单异常', val: '18次/分钟', threshold: '15次/分钟', time: '10:20:08',
+                            status: '未处理' },
+                        { id: 'ACC3072', rule: '交易量占比超标', val: '15%', threshold: '10%', time: '10:15:32',
+                            status: '监控中' },
+                        { id: 'ACC4096', rule: '价格操纵', val: '8% / 5min', threshold: '5% / 5min', time: '10:10:44',
+                            status: '未处理' },
+                        { id: 'ACC5120', rule: '小额撤单测试', val: '12次/分钟', threshold: '10次/分钟', time: '10:05:11',
+                            status: '监控中' }
+                    ],
+                    alertList: [
+                        { time: '10:23:15', acc: 'ACC1024', type: '交易频率', detail: '交易频率 25笔/分钟 (阈值20)',
+                            status: '未处理' },
+                        { time: '10:20:08', acc: 'ACC2048', type: '挂撤单异常', detail: '挂撤单 18次/分钟 (阈值15)',
+                            status: '未处理' },
+                        { time: '10:15:32', acc: 'ACC3072', type: '交易量占比', detail: '1h交易量占比 15% (阈值10%)',
+                            status: '监控中' },
+                        { time: '10:10:44', acc: 'ACC4096', type: '价格操纵', detail: '5分钟内拉盘 8% (阈值5%)',
+                            status: '未处理' },
+                        { time: '10:05:11', acc: 'ACC5120', type: '小额撤单', detail: '小额挂撤 12次/分钟 (阈值10)',
+                            status: '监控中' },
+                        { time: '09:58:03', acc: '—', type: '大额挂单', detail: '卖一远端 1.05U 挂单 80万枚', status: '已预警' },
+                        { time: '09:50:21', acc: 'ACC6144', type: '交易频率', detail: '交易频率 22笔/分钟 (阈值20)',
+                            status: '已处理' }
+                    ]
+                },
+                'ETH/USDT': {
+                    price: 3200,
+                    depth: [90, 180, 60, 30],
+                    cost: [60, 240, 360, 120],
+                    volume: 18,
+                    alerts: 8,
+                    obi: '+0.28',
+                    obiSub: '买盘偏厚',
+                    priceDev: '+12.3',
+                    priceDevSub: '平均成本 2850U',
+                    activeOrder: '4.5',
+                    activeOrderSub: '活跃度正常',
+                    robotInv: '38',
+                    robotInvSub: '安全区间',
+                    external: '32',
+                    externalSub: '潜在抛压可控',
+                    floatSupply: '1,280',
+                    floatSupplySub: '占总流通 42.7%',
+                    whaleAlert: '2条新警报',
+                    alertSummary: '4条待处理',
+                    alertDetail: '<span><span style="color:#ff5a7a;">●</span> 熔断待命</span><span><span style="color:#ffb347;">●</span> 失衡预警</span><span><span style="color:#4a8aff;">●</span> 巨鲸充值 180万</span>',
+                    costBadge: '密集峰 3000',
+                    pnlBadge: '盈利率 52%',
+                    netflowBadge: '1h +18万',
+                    bombBadge: '剩余 32%',
+                    whaleBadge: '2条未处理',
+                    orderBadge: '共38笔挂单',
+                    holderBadge: '共96位用户',
+                    dashWhale: [3, 8, 6, 15, 7],
+                    obDepthBid: [60, 140, 280, 160, 70],
+                    obDepthAsk: [40, 70, 120, 220, 320],
+                    footprintBuy: [10, 20, 25, 35, 22],
+                    footprintSell: [6, 10, 15, 12, 16],
+                    footprintWash: [4, 8, 12, 14, 18],
+                    obiData: [0.10, 0.28, 0.38, 0.15, 0.28],
+                    netflowIn: [10, 20, 15, 25, 18],
+                    netflowOut: [6, 8, 12, 10, 14],
+                    sentiment: [1.8, 1.5, 2.8, -0.3, 0.6],
+                    riskAlerts: [1, 2, 2, 3, 4, 3, 5],
+                    riskTypes: [
+                        { value: 3, name: '交易频率' },
+                        { value: 2, name: '挂撤单异常' },
+                        { value: 1, name: '交易量占比' },
+                        { value: 1, name: '价格操纵' },
+                        { value: 1, name: '小额撤单' }
+                    ],
+                    abnormalAccounts: [
+                        { id: 'ACC2048', rule: '交易频率超标', val: '22笔/分钟', threshold: '20笔/分钟', time: '10:20:08',
+                            status: '未处理' },
+                        { id: 'ACC3072', rule: '挂撤单异常', val: '16次/分钟', threshold: '15次/分钟', time: '10:15:32',
+                            status: '监控中' },
+                        { id: 'ACC4096', rule: '价格操纵', val: '6% / 5min', threshold: '5% / 5min', time: '10:10:44',
+                            status: '未处理' }
+                    ],
+                    alertList: [
+                        { time: '10:20:08', acc: 'ACC2048', type: '交易频率', detail: '交易频率 22笔/分钟 (阈值20)',
+                            status: '未处理' },
+                        { time: '10:15:32', acc: 'ACC3072', type: '挂撤单异常', detail: '挂撤单 16次/分钟 (阈值15)',
+                            status: '监控中' },
+                        { time: '10:10:44', acc: 'ACC4096', type: '价格操纵', detail: '5分钟内拉盘 6% (阈值5%)',
+                            status: '未处理' },
+                        { time: '09:58:03', acc: '—', type: '大额挂单', detail: '卖一远端 3200U 挂单 60万枚', status: '已预警' }
+                    ]
+                },
+                'SOL/USDT': {
+                    price: 180,
+                    depth: [200, 350, 150, 70],
+                    cost: [100, 400, 600, 200],
+                    volume: 35,
+                    alerts: 20,
+                    obi: '+0.45',
+                    obiSub: '买盘强势',
+                    priceDev: '+25.7',
+                    priceDevSub: '平均成本 143U',
+                    activeOrder: '2.1',
+                    activeOrderSub: '惜售明显',
+                    robotInv: '55',
+                    robotInvSub: '偏高关注',
+                    external: '22',
+                    externalSub: '外部抛压较轻',
+                    floatSupply: '1,800',
+                    floatSupplySub: '占总流通 60.0%',
+                    whaleAlert: '3条新警报',
+                    alertSummary: '6条待处理',
+                    alertDetail: '<span><span style="color:#ff5a7a;">●</span> 熔断待命</span><span><span style="color:#ffb347;">●</span> 失衡预警</span><span><span style="color:#4a8aff;">●</span> 巨鲸充值 350万</span>',
+                    costBadge: '密集峰 160',
+                    pnlBadge: '盈利率 65%',
+                    netflowBadge: '1h +35万',
+                    bombBadge: '剩余 22%',
+                    whaleBadge: '3条未处理',
+                    orderBadge: '共56笔挂单',
+                    holderBadge: '共156位用户',
+                    dashWhale: [8, 18, 12, 28, 15],
+                    obDepthBid: [120, 260, 450, 280, 130],
+                    obDepthAsk: [80, 140, 200, 380, 520],
+                    footprintBuy: [18, 35, 42, 55, 38],
+                    footprintSell: [10, 16, 22, 18, 26],
+                    footprintWash: [8, 14, 20, 24, 30],
+                    obiData: [0.18, 0.45, 0.52, 0.28, 0.45],
+                    netflowIn: [18, 35, 25, 42, 30],
+                    netflowOut: [10, 14, 20, 16, 24],
+                    sentiment: [2.5, 2.0, 4.2, -0.8, 1.2],
+                    riskAlerts: [3, 4, 5, 6, 8, 7, 10],
+                    riskTypes: [
+                        { value: 5, name: '交易频率' },
+                        { value: 4, name: '挂撤单异常' },
+                        { value: 3, name: '交易量占比' },
+                        { value: 4, name: '价格操纵' },
+                        { value: 2, name: '小额撤单' }
+                    ],
+                    abnormalAccounts: [
+                        { id: 'ACC1024', rule: '交易频率超标', val: '28笔/分钟', threshold: '20笔/分钟', time: '10:23:15',
+                            status: '未处理' },
+                        { id: 'ACC2048', rule: '交易量占比超标', val: '18%', threshold: '10%', time: '10:20:08',
+                            status: '未处理' },
+                        { id: 'ACC3072', rule: '价格操纵', val: '12% / 5min', threshold: '5% / 5min', time: '10:15:32',
+                            status: '监控中' },
+                        { id: 'ACC4096', rule: '挂撤单异常', val: '20次/分钟', threshold: '15次/分钟', time: '10:10:44',
+                            status: '未处理' },
+                        { id: 'ACC5120', rule: '小额撤单测试', val: '15次/分钟', threshold: '10次/分钟', time: '10:05:11',
+                            status: '监控中' }
+                    ],
+                    alertList: [
+                        { time: '10:23:15', acc: 'ACC1024', type: '交易频率', detail: '交易频率 28笔/分钟 (阈值20)',
+                            status: '未处理' },
+                        { time: '10:20:08', acc: 'ACC2048', type: '交易量占比', detail: '1h交易量占比 18% (阈值10%)',
+                            status: '未处理' },
+                        { time: '10:15:32', acc: 'ACC3072', type: '价格操纵', detail: '5分钟内拉盘 12% (阈值5%)',
+                            status: '监控中' },
+                        { time: '10:10:44', acc: 'ACC4096', type: '挂撤单异常', detail: '挂撤单 20次/分钟 (阈值15)',
+                            status: '未处理' },
+                        { time: '10:05:11', acc: 'ACC5120', type: '小额撤单', detail: '小额挂撤 15次/分钟 (阈值10)',
+                            status: '监控中' },
+                        { time: '09:58:03', acc: '—', type: '大额挂单', detail: '卖一远端 185U 挂单 120万枚', status: '已预警' },
+                        { time: '09:50:21', acc: 'ACC6144', type: '交易频率', detail: '交易频率 24笔/分钟 (阈值20)',
+                            status: '已处理' }
+                    ]
+                },
+                'BNB/USDT': {
+                    price: 580,
+                    depth: [110, 190, 75, 35],
+                    cost: [70, 280, 420, 140],
+                    volume: 15,
+                    alerts: 6,
+                    obi: '+0.20',
+                    obiSub: '买卖均衡',
+                    priceDev: '+8.2',
+                    priceDevSub: '平均成本 536U',
+                    activeOrder: '5.8',
+                    activeOrderSub: '活跃度较高',
+                    robotInv: '30',
+                    robotInvSub: '偏低关注',
+                    external: '38',
+                    externalSub: '外部抛压中等',
+                    floatSupply: '920',
+                    floatSupplySub: '占总流通 30.7%',
+                    whaleAlert: '0条新警报',
+                    alertSummary: '1条待处理',
+                    alertDetail: '<span><span style="color:#ffb347;">●</span> 失衡预警</span>',
+                    costBadge: '密集峰 560',
+                    pnlBadge: '盈利率 48%',
+                    netflowBadge: '1h +12万',
+                    bombBadge: '剩余 38%',
+                    whaleBadge: '0条未处理',
+                    orderBadge: '共28笔挂单',
+                    holderBadge: '共72位用户',
+                    dashWhale: [2, 5, 4, 10, 5],
+                    obDepthBid: [50, 120, 220, 140, 60],
+                    obDepthAsk: [30, 60, 100, 180, 240],
+                    footprintBuy: [8, 18, 22, 30, 20],
+                    footprintSell: [5, 8, 12, 10, 14],
+                    footprintWash: [3, 6, 10, 12, 14],
+                    obiData: [0.08, 0.20, 0.28, 0.10, 0.20],
+                    netflowIn: [8, 18, 12, 22, 15],
+                    netflowOut: [5, 7, 10, 8, 12],
+                    sentiment: [1.2, 1.0, 2.2, -0.2, 0.4],
+                    riskAlerts: [1, 1, 2, 2, 3, 2, 3],
+                    riskTypes: [
+                        { value: 2, name: '交易频率' },
+                        { value: 2, name: '挂撤单异常' },
+                        { value: 1, name: '交易量占比' },
+                        { value: 0, name: '价格操纵' },
+                        { value: 1, name: '小额撤单' }
+                    ],
+                    abnormalAccounts: [
+                        { id: 'ACC2048', rule: '交易频率超标', val: '22笔/分钟', threshold: '20笔/分钟', time: '10:20:08',
+                            status: '监控中' },
+                        { id: 'ACC5120', rule: '小额撤单测试', val: '12次/分钟', threshold: '10次/分钟', time: '10:05:11',
+                            status: '监控中' }
+                    ],
+                    alertList: [
+                        { time: '10:20:08', acc: 'ACC2048', type: '交易频率', detail: '交易频率 22笔/分钟 (阈值20)',
+                            status: '监控中' },
+                        { time: '10:05:11', acc: 'ACC5120', type: '小额撤单', detail: '小额挂撤 12次/分钟 (阈值10)',
+                            status: '监控中' }
+                    ]
+                }
+            };
+            return base[pair] || base['BTC/USDT'];
+        }
+
+        // ================================================================
+        // 配置管理（按交易对隔离）
+        // ================================================================
+        const DEFAULT_CONFIG = {
+            depthLevels: 10,
+            inventoryLow: 20,
+            inventoryHigh: 80,
+            washThreshold: 65,
+            whaleThreshold: 50,
+            winDaysRatio: 60,
+            singleGainRatio: 30,
+            maxDrawdown: 30,
+            recoveryDays: 7,
+            totalTrades: 100,
+            activeDays: 30,
+            tradeFreqThreshold: 20,
+            cancelFreqThreshold: 15,
+            volumeRatioThreshold: 10,
+            priceChangeThreshold: 5,
+            smallCancelThreshold: 10
+        };
+
+        function loadPairConfig(pair) {
+            const stored = localStorage.getItem(getPairStorageKey(pair, 'config'));
+            if (stored) {
+                try { return { ...DEFAULT_CONFIG, ...JSON.parse(stored) }; } catch (e) {}
+            }
+            return { ...DEFAULT_CONFIG };
+        }
+
+        function savePairConfig(pair, cfg) {
+            localStorage.setItem(getPairStorageKey(pair, 'config'), JSON.stringify(cfg));
+        }
+
+        function getCurrentConfig() {
+            return loadPairConfig(currentPair);
+        }
+
+        function saveCurrentConfig(cfg) {
+            savePairConfig(currentPair, cfg);
+        }
+
+        function getConfig() { return getCurrentConfig(); }
+
+        function saveConfigToStorage(cfg) { saveCurrentConfig(cfg); }
+
+        // ================================================================
+        // 切换交易对
+        // ================================================================
+        function switchPair(newPair) {
+            if (newPair === currentPair) return;
+            const currentCfg = getCurrentConfig();
+            savePairConfig(currentPair, currentCfg);
+            currentPair = newPair;
+            localStorage.setItem('currentPair', currentPair);
+            const newCfg = loadPairConfig(newPair);
+            refreshAllUI(newCfg);
+            renderAllData(newCfg);
+            document.getElementById('globalPairSelector').value = newPair;
+        }
+
+        // ================================================================
+        // 统一渲染
+        // ================================================================
+        function renderAllData(cfg) {
+            const data = getMockDataForPair(currentPair);
+
+            document.getElementById('kpiFloatSupply').innerHTML = data.floatSupply + '<span class="unit">万</span>';
+            document.getElementById('kpiFloatSupplySub').textContent = data.floatSupplySub;
+            document.getElementById('kpiObi').textContent = data.obi;
+            document.getElementById('kpiObiSub').textContent = data.obiSub;
+            document.getElementById('kpiPriceDev').innerHTML = data.priceDev + '<span class="unit">%</span>';
+            document.getElementById('kpiPriceDevSub').textContent = data.priceDevSub;
+            document.getElementById('kpiActiveOrder').innerHTML = data.activeOrder + '<span class="unit">%</span>';
+            document.getElementById('kpiActiveOrderSub').textContent = data.activeOrderSub;
+            document.getElementById('kpiRobotInv').innerHTML = data.robotInv + '<span class="unit">%</span>';
+            document.getElementById('kpiRobotInvSub').textContent = data.robotInvSub;
+            document.getElementById('kpiExternal').innerHTML = data.external + '<span class="unit">%</span>';
+            document.getElementById('kpiExternalSub').textContent = data.externalSub;
+
+            document.getElementById('dashWhaleBadge').textContent = data.whaleAlert;
+            document.getElementById('alertSummaryBadge').textContent = data.alertSummary;
+            document.getElementById('alertSummaryDetail').innerHTML = data.alertDetail;
+            document.getElementById('dashCostBadge').textContent = data.costBadge;
+            document.getElementById('posCostBadge').textContent = data.costBadge;
+            document.getElementById('posPnLBadge').textContent = data.pnlBadge;
+            document.getElementById('macroNetflowBadge').textContent = data.netflowBadge;
+            document.getElementById('macroBombBadge').textContent = data.bombBadge;
+            document.getElementById('macroWhaleBadge').textContent = data.whaleBadge;
+            document.getElementById('detailOrderBadge').textContent = data.orderBadge;
+            document.getElementById('detailHolderBadge').textContent = data.holderBadge;
+
+            document.getElementById('kpiAlertsTotal').textContent = data.alerts;
+            document.getElementById('kpiAlertsTotalSub').textContent = '较昨日 +' + Math.floor(data.alerts * 0.3);
+            const abnormalCount = data.abnormalAccounts ? data.abnormalAccounts.length : 0;
+            document.getElementById('kpiAbnormalAccounts').textContent = abnormalCount;
+            document.getElementById('kpiAbnormalAccountsSub').textContent = '待处理';
+            document.getElementById('kpiHighFreq').textContent = data.abnormalAccounts ? data.abnormalAccounts.filter(a => a
+                .rule.includes('交易频率')).length : 0;
+            document.getElementById('kpiCancelAbnormal').textContent = data.abnormalAccounts ? data.abnormalAccounts.filter(a =>
+                a.rule.includes('挂撤单')).length : 0;
+            document.getElementById('kpiPriceManip').textContent = data.abnormalAccounts ? data.abnormalAccounts.filter(a => a
+                .rule.includes('价格')).length : 0;
+            document.getElementById('kpiLargeOrder').textContent = data.alertList ? data.alertList.filter(a => a.type ===
+                '大额挂单').length : 0;
+
+            updateECharts(data);
+            updateTradeRiskTables(data);
+            if (document.getElementById('page-stable-profit').classList.contains('active')) {
+                renderStableProfitPage(cfg);
+            }
+        }
+
+        // ================================================================
+        // 更新ECharts
+        // ================================================================
+        function updateECharts(data) {
+            const chartMap = {
+                dashDepth: { series: [{ data: data.depth }, { data: data.depth.map(v => v * 0.3) }] },
+                dashCost: { series: [{ data: data.cost }] },
+                dashWhale: { series: [{ data: data.dashWhale }] },
+                obDepth: { series: [{ data: data.obDepthBid }, { data: data.obDepthAsk }] },
+                obFootprint: { series: [{ data: data.footprintBuy }, { data: data.footprintSell }, { data: data
+                        .footprintWash }] },
+                obOBI: { series: [{ data: data.obiData }] },
+                posCost: { series: [{ data: data.cost }] },
+                macroNetflow: { series: [{ data: data.netflowIn }, { data: data.netflowOut }] },
+                macroSentiment: {
+                    series: [{
+                        data: data.sentiment.map((v, i) => ({ value: v, itemStyle: { color: v >= 0 ?
+                                    '#4cd9a0' : '#ff5a7a' } }))
+                    }]
+                },
+                riskTypeChart: {
+                    series: [{
+                        data: data.riskTypes.map((d, i) => ({ ...d, itemStyle: { color: ['#ff5a7a', '#ffb347',
+                                    '#ff9f3b', '#ff3b5c', '#4a8aff'
+                                ][i] } }))
+                    }]
+                },
+                riskTrendChart: { series: [{ data: data.riskAlerts }] }
+            };
+            Object.keys(chartMap).forEach(id => {
+                const chart = echarts.getInstanceByDom(document.getElementById(id));
+                if (chart) {
+                    const opt = chart.getOption();
+                    chartMap[id].series.forEach((s, idx) => {
+                        if (opt.series && opt.series[idx]) {
+                            opt.series[idx].data = s.data;
+                            if (s.itemStyle) opt.series[idx].itemStyle = s.itemStyle;
+                        }
+                    });
+                    chart.setOption(opt);
+                }
+            });
+        }
+
+        // ================================================================
+        // 更新交易风控表格
+        // ================================================================
+        function updateTradeRiskTables(data) {
+            const alertBody = document.getElementById('alertListBody');
+            if (data.alertList) {
+                alertBody.innerHTML = data.alertList.map(a =>
+                    `<tr><td>${a.time}</td><td>${a.acc}</td><td><span class="tag ${a.type==='交易频率'||a.type==='挂撤单异常'||a.type==='价格操纵'?'danger':'warning'}">${a.type}</span></td><td>${a.detail}</td><td><span class="tag ${a.status==='未处理'?'alert':a.status==='监控中'?'warning':'success'}">${a.status}</span></td></tr>`
+                ).join('');
+            }
+            const abnormalBody = document.getElementById('abnormalAccountBody');
+            if (data.abnormalAccounts) {
+                abnormalBody.innerHTML = data.abnormalAccounts.map(a =>
+                    `<tr><td>${a.id}</td><td>${a.rule}</td><td>${a.val}</td><td>${a.threshold}</td><td>${a.time}</td><td><span class="tag ${a.status==='未处理'?'alert':a.status==='监控中'?'warning':'success'}">${a.status}</span></td></tr>`
+                ).join('');
+            }
+        }
+
+        // ================================================================
+        // 刷新UI配置
+        // ================================================================
+        function refreshAllUI(cfg) {
+            document.getElementById('cfgDepthLevels').value = cfg.depthLevels;
+            document.getElementById('dashDepthBadge').textContent = `前${cfg.depthLevels}档`;
+            document.getElementById('obDepthBadge').textContent = `买/卖前${cfg.depthLevels}`;
+
+            document.getElementById('cfgInventoryLow').value = cfg.inventoryLow;
+            document.getElementById('cfgInventoryHigh').value = cfg.inventoryHigh;
+            document.getElementById('cfgWashThreshold').value = cfg.washThreshold;
+            document.getElementById('riskTargetRange').textContent = `${cfg.inventoryLow}%-${cfg.inventoryHigh}%`;
+            document.getElementById('riskWashThreshold').textContent = `≤${cfg.washThreshold}%`;
+            updateRiskGauge(cfg);
+
+            document.getElementById('cfgWhaleThreshold').value = cfg.whaleThreshold;
+            document.getElementById('dashWhaleBadge').textContent = `阈值 ${cfg.whaleThreshold}万`;
+            document.getElementById('macroWhaleBadge').textContent = `阈值 ${cfg.whaleThreshold}万`;
+
+            document.getElementById('filterWinDaysRatio').value = cfg.winDaysRatio;
+            document.getElementById('filterSingleGainRatio').value = cfg.singleGainRatio;
+            document.getElementById('filterMaxDrawdown').value = cfg.maxDrawdown;
+            document.getElementById('filterRecoveryDays').value = cfg.recoveryDays;
+            document.getElementById('filterTotalTrades').value = cfg.totalTrades;
+            document.getElementById('filterActiveDays').value = cfg.activeDays;
+
+            document.getElementById('cfgTradeFreq').value = cfg.tradeFreqThreshold;
+            document.getElementById('cfgCancelFreq').value = cfg.cancelFreqThreshold;
+            document.getElementById('cfgVolumeRatio').value = cfg.volumeRatioThreshold;
+            document.getElementById('cfgPriceChange').value = cfg.priceChangeThreshold;
+            document.getElementById('cfgSmallCancel').value = cfg.smallCancelThreshold;
+
+            if (document.getElementById('page-stable-profit').classList.contains('active')) {
+                renderStableProfitPage(cfg);
+            }
+            document.getElementById('filterStatus').textContent = '（当前使用全局配置）';
+        }
+
+        // ================================================================
+        // 更新风控仪表盘
+        // ================================================================
+        function updateRiskGauge(cfg) {
+            const chart = echarts.getInstanceByDom(document.getElementById('riskGauge'));
+            if (chart) {
+                const option = chart.getOption();
+                const low = cfg.inventoryLow / 100;
+                const high = cfg.inventoryHigh / 100;
+                option.series[0].axisLine.lineStyle.color = [
+                    [low, '#ff5a7a'],
+                    [high, '#ffb347'],
+                    [1, '#4cd9a0']
+                ];
+                chart.setOption(option);
+            }
+        }
+
+        // ================================================================
+        // 配置变更处理
+        // ================================================================
+        function onDepthChange(val) {
+            const cfg = getCurrentConfig();
+            cfg.depthLevels = parseInt(val);
+            saveCurrentConfig(cfg);
+            refreshAllUI(cfg);
+        }
+
+        function onRiskConfigChange() {
+            const cfg = getCurrentConfig();
+            cfg.inventoryLow = parseInt(document.getElementById('cfgInventoryLow').value) || DEFAULT_CONFIG.inventoryLow;
+            cfg.inventoryHigh = parseInt(document.getElementById('cfgInventoryHigh').value) || DEFAULT_CONFIG.inventoryHigh;
+            cfg.washThreshold = parseInt(document.getElementById('cfgWashThreshold').value) || DEFAULT_CONFIG.washThreshold;
+            saveCurrentConfig(cfg);
+            refreshAllUI(cfg);
+        }
+
+        function onWhaleConfigChange() {
+            const cfg = getCurrentConfig();
+            cfg.whaleThreshold = parseInt(document.getElementById('cfgWhaleThreshold').value) || DEFAULT_CONFIG.whaleThreshold;
+            saveCurrentConfig(cfg);
+            refreshAllUI(cfg);
+        }
+
+        function onTradeRiskConfigChange() {
+            const cfg = getCurrentConfig();
+            cfg.tradeFreqThreshold = parseInt(document.getElementById('cfgTradeFreq').value) || DEFAULT_CONFIG
+                .tradeFreqThreshold;
+            cfg.cancelFreqThreshold = parseInt(document.getElementById('cfgCancelFreq').value) || DEFAULT_CONFIG
+                .cancelFreqThreshold;
+            cfg.volumeRatioThreshold = parseInt(document.getElementById('cfgVolumeRatio').value) || DEFAULT_CONFIG
+                .volumeRatioThreshold;
+            cfg.priceChangeThreshold = parseFloat(document.getElementById('cfgPriceChange').value) || DEFAULT_CONFIG
+                .priceChangeThreshold;
+            cfg.smallCancelThreshold = parseInt(document.getElementById('cfgSmallCancel').value) || DEFAULT_CONFIG
+                .smallCancelThreshold;
+            saveCurrentConfig(cfg);
+            const data = getMockDataForPair(currentPair);
+            updateECharts(data);
+            updateTradeRiskTables(data);
+        }
+
+        // ================================================================
+        // 稳定盈利页面渲染
+        // ================================================================
+        function generateMockAccounts() {
+            const types = ['手动高手', '量化CTA', '恶意高频套利', '资金费率套利', '其他'];
+            const accounts = [];
+            const pairSeed = currentPair === 'BTC/USDT' ? 1 : currentPair === 'ETH/USDT' ? 2 : currentPair === 'SOL/USDT' ?
+                3 : 4;
+            for (let i = 0; i < 20; i++) {
+                const typeIdx = (i + pairSeed) % types.length;
+                const type = types[typeIdx];
+                const winDays = 40 + Math.floor(Math.random() * 40);
+                const singleGain = 10 + Math.random() * 35;
+                const drawdown = 10 + Math.random() * 35;
+                const recovery = 1 + Math.floor(Math.random() * 12);
+                const trades = 50 + Math.floor(Math.random() * 150);
+                const active = 15 + Math.floor(Math.random() * 30);
+                accounts.push({
+                    id: `ACC${1000 + i + pairSeed * 100}`,
+                    type: type,
+                    winDaysRatio: winDays,
+                    singleGainRatio: singleGain,
+                    maxDrawdown: drawdown,
+                    recoveryDays: recovery,
+                    totalTrades: trades,
+                    activeDays: active
+                });
+            }
+            return accounts;
+        }
+
+        function renderStableProfitPage(cfg) {
+            if (!cfg) cfg = getCurrentConfig();
+            const summaryHtml = `
+                <div class="threshold-item"><div class="label">胜天数占比</div><div class="value">≥${cfg.winDaysRatio}%</div></div>
+                <div class="threshold-item"><div class="label">单笔收益贡献</div><div class="value">≤${cfg.singleGainRatio}%</div></div>
+                <div class="threshold-item"><div class="label">最大回撤</div><div class="value">≤${cfg.maxDrawdown}%</div></div>
+                <div class="threshold-item"><div class="label">回撤修复</div><div class="value">≤${cfg.recoveryDays}天</div></div>
+                <div class="threshold-item"><div class="label">总交易笔数</div><div class="value">≥${cfg.totalTrades}</div></div>
+                <div class="threshold-item"><div class="label">活跃天数</div><div class="value">≥${cfg.activeDays}</div></div>
+            `;
+            document.getElementById('stableThresholdSummary').innerHTML = summaryHtml;
+
+            const accounts = generateMockAccounts();
+            const stableAccounts = accounts.filter(acc => {
+                return acc.winDaysRatio >= cfg.winDaysRatio &&
+                    acc.singleGainRatio <= cfg.singleGainRatio &&
+                    acc.maxDrawdown <= cfg.maxDrawdown &&
+                    acc.recoveryDays <= cfg.recoveryDays &&
+                    acc.totalTrades >= cfg.totalTrades &&
+                    acc.activeDays >= cfg.activeDays;
+            });
+
+            document.getElementById('totalAccounts').textContent = accounts.length;
+            document.getElementById('stableCount').textContent = stableAccounts.length;
+            document.getElementById('stableRatio').textContent = ((stableAccounts.length / accounts.length) * 100).toFixed(
+                0) + '%';
+
+            const tbody = document.getElementById('stableAccountTableBody');
+            tbody.innerHTML = '';
+            accounts.forEach(acc => {
+                const isStable = stableAccounts.includes(acc);
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${acc.id}</td>
+                    <td><span class="tag ${acc.type.includes('恶意')?'danger':acc.type.includes('量化')?'robot':'user'}">${acc.type}</span></td>
+                    <td>${acc.winDaysRatio}%</td>
+                    <td>${acc.singleGainRatio.toFixed(1)}%</td>
+                    <td>${acc.maxDrawdown.toFixed(1)}%</td>
+                    <td>${acc.recoveryDays}</td>
+                    <td>${acc.totalTrades}</td>
+                    <td>${acc.activeDays}</td>
+                    <td><span class="tag ${isStable?'success':'warning'}">${isStable?'✅ 是':'❌ 否'}</span></td>
+                `;
+                tbody.appendChild(tr);
+            });
+            document.getElementById('stableTableBadge').textContent = `共${accounts.length}个账户，稳定${stableAccounts.length}个`;
+
+            renderStableCharts(accounts, stableAccounts);
+        }
+
+        function renderStableCharts(accounts, stableAccounts) {
+            const typeMap = {};
+            accounts.forEach(acc => {
+                typeMap[acc.type] = (typeMap[acc.type] || 0) + 1;
+            });
+            const pieData = Object.keys(typeMap).map(key => ({ name: key, value: typeMap[key] }));
+            const chart1 = echarts.getInstanceByDom(document.getElementById('stableTypeChart')) ||
+                echarts.init(document.getElementById('stableTypeChart'), 'dark');
+            chart1.setOption({
+                tooltip: { trigger: 'item' },
+                series: [{
+                    type: 'pie',
+                    radius: ['45%', '70%'],
+                    data: pieData,
+                    label: { color: '#b0c8e8', fontSize: 10, formatter: '{b}\n{d}%' },
+                    labelLine: { lineStyle: { color: '#2a3a5a' } }
+                }]
+            });
+
+            const nonStable = accounts.length - stableAccounts.length;
+            const chart2 = echarts.getInstanceByDom(document.getElementById('stableCompareChart')) ||
+                echarts.init(document.getElementById('stableCompareChart'), 'dark');
+            chart2.setOption({
+                tooltip: { trigger: 'axis' },
+                grid: { left: '6%', right: '4%', top: '10%', bottom: '12%' },
+                xAxis: { data: ['稳定盈利', '非稳定'], axisLabel: { color: '#4a6080', fontSize: 10 } },
+                yAxis: { splitLine: { lineStyle: { color: '#111927' } }, axisLabel: { color: '#4a6080', fontSize: 9 } },
+                series: [{
+                    type: 'bar',
+                    data: [
+                        { value: stableAccounts.length, itemStyle: { color: '#4cd9a0' } },
+                        { value: nonStable, itemStyle: { color: '#ff5a7a' } }
+                    ],
+                    barWidth: '40%',
+                    label: { show: true, position: 'top', formatter: '{c}', color: '#b0c8e8', fontSize: 11 }
+                }]
+            });
+
+            if (!window.stableCharts) window.stableCharts = [];
+            window.stableCharts = [chart1, chart2];
+        }
+
+        // ================================================================
+        // 稳定盈利筛选面板操作
+        // ================================================================
+        let currentFilterParams = null;
+
+        function applyFilter() {
+            const params = {
+                winDaysRatio: parseFloat(document.getElementById('filterWinDaysRatio').value) || DEFAULT_CONFIG
+                    .winDaysRatio,
+                singleGainRatio: parseFloat(document.getElementById('filterSingleGainRatio').value) || DEFAULT_CONFIG
+                    .singleGainRatio,
+                maxDrawdown: parseFloat(document.getElementById('filterMaxDrawdown').value) || DEFAULT_CONFIG
+                    .maxDrawdown,
+                recoveryDays: parseInt(document.getElementById('filterRecoveryDays').value) || DEFAULT_CONFIG
+                    .recoveryDays,
+                totalTrades: parseInt(document.getElementById('filterTotalTrades').value) || DEFAULT_CONFIG
+                    .totalTrades,
+                activeDays: parseInt(document.getElementById('filterActiveDays').value) || DEFAULT_CONFIG.activeDays
+            };
+            currentFilterParams = params;
+            document.getElementById('filterStatus').textContent = '（当前使用自定义筛选）';
+            document.getElementById('filterFeedback').textContent = '✅ 已应用自定义筛选';
+            renderStableProfitPage(params);
+        }
+
+        function saveFilterToGlobal() {
+            const params = {
+                winDaysRatio: parseFloat(document.getElementById('filterWinDaysRatio').value) || DEFAULT_CONFIG
+                    .winDaysRatio,
+                singleGainRatio: parseFloat(document.getElementById('filterSingleGainRatio').value) || DEFAULT_CONFIG
+                    .singleGainRatio,
+                maxDrawdown: parseFloat(document.getElementById('filterMaxDrawdown').value) || DEFAULT_CONFIG
+                    .maxDrawdown,
+                recoveryDays: parseInt(document.getElementById('filterRecoveryDays').value) || DEFAULT_CONFIG
+                    .recoveryDays,
+                totalTrades: parseInt(document.getElementById('filterTotalTrades').value) || DEFAULT_CONFIG
+                    .totalTrades,
+                activeDays: parseInt(document.getElementById('filterActiveDays').value) || DEFAULT_CONFIG.activeDays
+            };
+            const globalCfg = getCurrentConfig();
+            Object.assign(globalCfg, params);
+            saveCurrentConfig(globalCfg);
+            currentFilterParams = null;
+            refreshAllUI(globalCfg);
+            document.getElementById('filterFeedback').textContent = '✅ 已保存为全局配置';
+            document.getElementById('filterStatus').textContent = '（当前使用全局配置）';
+            renderStableProfitPage(globalCfg);
+        }
+
+        function resetFilterToGlobal() {
+            const cfg = getCurrentConfig();
+            document.getElementById('filterWinDaysRatio').value = cfg.winDaysRatio;
+            document.getElementById('filterSingleGainRatio').value = cfg.singleGainRatio;
+            document.getElementById('filterMaxDrawdown').value = cfg.maxDrawdown;
+            document.getElementById('filterRecoveryDays').value = cfg.recoveryDays;
+            document.getElementById('filterTotalTrades').value = cfg.totalTrades;
+            document.getElementById('filterActiveDays').value = cfg.activeDays;
+            currentFilterParams = null;
+            document.getElementById('filterStatus').textContent = '（当前使用全局配置）';
+            document.getElementById('filterFeedback').textContent = '↩️ 已重置为全局配置';
+            renderStableProfitPage(cfg);
+        }
+
+        // ================================================================
+        // 用户画像 - 规则配置（内嵌）
+        // ================================================================
+        const DEFAULT_RULE_CONFIG = {
+            smartTradeCount: 15,
+            smartWinRate: 60,
+            smartProfitRatio: 1.5,
+            smartPosition: 2,
+            retailTradeCount: 15,
+            retailNetProfit: 'negative',
+            retailWinRate: 40,
+            retailHoldRatio: 3,
+            retailLiquidation: 50,
+            woolDevice: 3,
+            woolIP: 5,
+            progHoldTime: 1,
+            progCancelRatio: 20
+        };
+
+        function getRuleConfig() {
+            const stored = localStorage.getItem('userRuleConfig');
+            if (stored) {
+                try { return { ...DEFAULT_RULE_CONFIG, ...JSON.parse(stored) }; } catch (e) {}
+            }
+            return { ...DEFAULT_RULE_CONFIG };
+        }
+
+        function saveRuleConfigToStorage(cfg) {
+            localStorage.setItem('userRuleConfig', JSON.stringify(cfg));
+        }
+
+        function loadRuleConfigToForm() {
+            const cfg = getRuleConfig();
+            document.getElementById('ruleSmartTradeCount').value = cfg.smartTradeCount;
+            document.getElementById('ruleSmartWinRate').value = cfg.smartWinRate;
+            document.getElementById('ruleSmartProfitRatio').value = cfg.smartProfitRatio;
+            document.getElementById('ruleSmartPosition').value = cfg.smartPosition;
+            document.getElementById('ruleRetailTradeCount').value = cfg.retailTradeCount;
+            document.getElementById('ruleRetailNetProfit').value = cfg.retailNetProfit;
+            document.getElementById('ruleRetailWinRate').value = cfg.retailWinRate;
+            document.getElementById('ruleRetailHoldRatio').value = cfg.retailHoldRatio;
+            document.getElementById('ruleRetailLiquidation').value = cfg.retailLiquidation;
+            document.getElementById('ruleWoolDevice').value = cfg.woolDevice;
+            document.getElementById('ruleWoolIP').value = cfg.woolIP;
+            document.getElementById('ruleProgHoldTime').value = cfg.progHoldTime;
+            document.getElementById('ruleProgCancelRatio').value = cfg.progCancelRatio;
+            document.getElementById('ruleStatus').textContent = '配置已加载';
+        }
+
+        function saveRuleConfig() {
+            const cfg = {
+                smartTradeCount: parseInt(document.getElementById('ruleSmartTradeCount').value) || 15,
+                smartWinRate: parseInt(document.getElementById('ruleSmartWinRate').value) || 60,
+                smartProfitRatio: parseFloat(document.getElementById('ruleSmartProfitRatio').value) || 1.5,
+                smartPosition: parseFloat(document.getElementById('ruleSmartPosition').value) || 2,
+                retailTradeCount: parseInt(document.getElementById('ruleRetailTradeCount').value) || 15,
+                retailNetProfit: document.getElementById('ruleRetailNetProfit').value,
+                retailWinRate: parseInt(document.getElementById('ruleRetailWinRate').value) || 40,
+                retailHoldRatio: parseFloat(document.getElementById('ruleRetailHoldRatio').value) || 3,
+                retailLiquidation: parseInt(document.getElementById('ruleRetailLiquidation').value) || 50,
+                woolDevice: parseInt(document.getElementById('ruleWoolDevice').value) || 3,
+                woolIP: parseInt(document.getElementById('ruleWoolIP').value) || 5,
+                progHoldTime: parseInt(document.getElementById('ruleProgHoldTime').value) || 1,
+                progCancelRatio: parseInt(document.getElementById('ruleProgCancelRatio').value) || 20
+            };
+            saveRuleConfigToStorage(cfg);
+            document.getElementById('ruleFeedback').textContent = '✅ 规则配置已保存';
+            document.getElementById('ruleStatus').textContent = '配置已更新';
+            // 重新渲染用户画像（模拟标签更新）
+            renderUserProfile();
+        }
+
+        function resetRuleConfig() {
+            localStorage.removeItem('userRuleConfig');
+            loadRuleConfigToForm();
+            document.getElementById('ruleFeedback').textContent = '↩️ 已恢复默认配置';
+            renderUserProfile();
+        }
+
+        // ================================================================
+        // 用户画像渲染
+        // ================================================================
+        function renderUserProfile() {
+            const chart1 = echarts.getInstanceByDom(document.getElementById('userTagChart')) ||
+                echarts.init(document.getElementById('userTagChart'), 'dark');
+            chart1.setOption({
+                tooltip: { trigger: 'item' },
+                series: [{
+                    type: 'pie',
+                    radius: ['45%', '70%'],
+                    data: [
+                        { value: 42, name: '聪明钱', itemStyle: { color: '#4cd9a0' } },
+                        { value: 892, name: '散户', itemStyle: { color: '#ffb347' } },
+                        { value: 67, name: '羊毛党', itemStyle: { color: '#ff5a7a' } },
+                        { value: 23, name: '吃客损KOL', itemStyle: { color: '#a78bfa' } },
+                        { value: 38, name: '程序化交易', itemStyle: { color: '#4a8aff' } }
+                    ],
+                    label: { color: '#b0c8e8', fontSize: 10, formatter: '{b}\n{d}%' },
+                    labelLine: { lineStyle: { color: '#2a3a5a' } }
+                }]
+            });
+
+            const chart2 = echarts.getInstanceByDom(document.getElementById('userTagTrendChart')) ||
+                echarts.init(document.getElementById('userTagTrendChart'), 'dark');
+            chart2.setOption({
+                tooltip: { trigger: 'axis' },
+                grid: { left: '6%', right: '4%', top: '10%', bottom: '12%' },
+                xAxis: { data: ['08/21', '08/22', '08/23', '08/24', '08/25', '08/26', '08/27'],
+                    axisLabel: { color: '#4a6080', fontSize: 8 } },
+                yAxis: { splitLine: { lineStyle: { color: '#111927' } }, axisLabel: { color: '#4a6080', fontSize: 8 } },
+                series: [
+                    { name: '聪明钱', type: 'line', data: [38, 40, 39, 41, 42, 43, 42], smooth: true,
+                        lineStyle: { color: '#4cd9a0' }, symbol: 'circle' },
+                    { name: '散户', type: 'line', data: [880, 885, 890, 895, 898, 900, 892], smooth: true,
+                        lineStyle: { color: '#ffb347' }, symbol: 'circle' },
+                    { name: '羊毛党', type: 'line', data: [60, 62, 65, 66, 67, 68, 67], smooth: true,
+                        lineStyle: { color: '#ff5a7a' }, symbol: 'circle' }
+                ],
+                legend: { data: ['聪明钱', '散户', '羊毛党'], textStyle: { color: '#4a6080', fontSize: 9 },
+                bottom: 0 }
+            });
+
+            if (!window.userProfileCharts) window.userProfileCharts = [];
+            window.userProfileCharts = [chart1, chart2];
+        }
+
+        // ================================================================
+        // 时钟
+        // ================================================================
+        function updateClock() {
+            document.getElementById('clockDisplay').textContent = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+        }
+        updateClock();
+        setInterval(updateClock, 1000);
+
+        // ================================================================
+        // 页面导航
+        // ================================================================
+        const navItems = document.querySelectorAll('.nav-item');
+        const pageMap = {
+            dashboard: document.getElementById('page-dashboard'),
+            orderbook: document.getElementById('page-orderbook'),
+            position: document.getElementById('page-position'),
+            risk: document.getElementById('page-risk'),
+            macro: document.getElementById('page-macro'),
+            'detail-orders': document.getElementById('page-detail-orders'),
+            'detail-holders': document.getElementById('page-detail-holders'),
+            'detail-whales': document.getElementById('page-detail-whales'),
+            'stable-profit': document.getElementById('page-stable-profit'),
+            'trade-risk': document.getElementById('page-trade-risk'),
+            'user-profile': document.getElementById('page-user-profile')
+        };
+        const titles = {
+            dashboard: '总览仪表盘 <small>全局决策起点</small>',
+            orderbook: '盘口微观 <small>挂单与深度分析</small>',
+            position: '筹码行为 <small>持仓成本与用户心理</small>',
+            risk: '机器人风控 <small>库存安全与策略参数</small>',
+            macro: '宏观威胁 <small>链上监控与外部炸弹</small>',
+            'detail-orders': '挂单明细 <small>完整实时挂单列表</small>',
+            'detail-holders': '持仓明细 <small>全部用户持仓详情</small>',
+            'detail-whales': '巨鲸警报 <small>大额充提监控</small>',
+            'stable-profit': '稳定盈利账户 <small>筛选与监控</small>',
+            'trade-risk': '交易风控 <small>实时监控与报警</small>',
+            'user-profile': '用户画像 <small>标签与行为分析</small>'
+        };
+
+        function navigateTo(pageId) {
+            navItems.forEach(item => {
+                item.classList.toggle('active', item.dataset.page === pageId);
+            });
+            Object.keys(pageMap).forEach(key => {
+                pageMap[key].classList.toggle('active', key === pageId);
+            });
+            document.getElementById('pageTitle').innerHTML = titles[pageId] || '页面';
+            if (pageId === 'stable-profit') {
+                const cfg = currentFilterParams || getCurrentConfig();
+                renderStableProfitPage(cfg);
+                document.getElementById('filterWinDaysRatio').value = cfg.winDaysRatio;
+                document.getElementById('filterSingleGainRatio').value = cfg.singleGainRatio;
+                document.getElementById('filterMaxDrawdown').value = cfg.maxDrawdown;
+                document.getElementById('filterRecoveryDays').value = cfg.recoveryDays;
+                document.getElementById('filterTotalTrades').value = cfg.totalTrades;
+                document.getElementById('filterActiveDays').value = cfg.activeDays;
+                document.getElementById('filterStatus').textContent = currentFilterParams ? '（当前使用自定义筛选）' :
+                    '（当前使用全局配置）';
+            }
+            if (pageId === 'trade-risk') {
+                const data = getMockDataForPair(currentPair);
+                updateECharts(data);
+                updateTradeRiskTables(data);
+            }
+            if (pageId === 'user-profile') {
+                loadRuleConfigToForm();
+                renderUserProfile();
+            }
+            setTimeout(() => {
+                Object.values(echartsInstances).forEach(chart => {
+                    if (chart && !chart.isDisposed()) chart.resize();
+                });
+                if (window.stableCharts) {
+                    window.stableCharts.forEach(chart => {
+                        if (chart && !chart.isDisposed()) chart.resize();
+                    });
+                }
+                if (window.userProfileCharts) {
+                    window.userProfileCharts.forEach(chart => {
+                        if (chart && !chart.isDisposed()) chart.resize();
+                    });
+                }
+            }, 100);
+        }
+
+        navItems.forEach(btn => {
+            btn.addEventListener('click', function() {
+                navigateTo(this.dataset.page);
+            });
+        });
+
+        // ================================================================
+        // 交易对切换事件绑定
+        // ================================================================
+        document.getElementById('globalPairSelector').addEventListener('change', function(e) {
+            switchPair(e.target.value);
+        });
+
+        // ================================================================
+        // ECharts 初始化（所有图表）
+        // ================================================================
+        const echartsInstances = {};
+
+        function initChart(domId, option) {
+            const el = document.getElementById(domId);
+            if (!el) return null;
+            const chart = echarts.init(el, 'dark');
+            chart.setOption(option);
+            echartsInstances[domId] = chart;
+            return chart;
+        }
+
+        const initData = getMockDataForPair(currentPair);
+
+        initChart('dashDepth', {
+            grid: { left: '5%', right: '3%', top: '10%', bottom: '10%' },
+            xAxis: { data: ['0.98', '1.00', '1.02', '1.04'], axisLabel: { color: '#4a6080', fontSize: 8 } },
+            yAxis: { show: false },
+            series: [
+                { type: 'bar', data: initData.depth, itemStyle: { color: '#4cd9a0' }, barWidth: '40%' },
+                { type: 'bar', data: initData.depth.map(v => v * 0.3), itemStyle: { color: '#ff5a7a' }, barWidth: '40%' }
+            ]
+        });
+        initChart('dashCost', {
+            grid: { left: '5%', right: '3%', top: '10%', bottom: '10%' },
+            xAxis: { data: ['0.8', '0.9', '1.0', '1.1'], axisLabel: { color: '#4a6080', fontSize: 8 } },
+            yAxis: { show: false },
+            series: [{ type: 'line', data: initData.cost, smooth: true, lineStyle: { color: '#a78bfa', width: 2 },
+                areaStyle: { color: 'rgba(167,139,250,0.2)' }, symbol: 'circle', symbolSize: 4 }]
+        });
+        initChart('dashWhale', {
+            grid: { left: '5%', right: '3%', top: '10%', bottom: '10%' },
+            xAxis: { data: ['08', '10', '12', '14', '16'], axisLabel: { color: '#4a6080', fontSize: 8 } },
+            yAxis: { show: false },
+            series: [{ type: 'bar', data: initData.dashWhale, itemStyle: { color: '#ffb347' }, barWidth: '50%' }]
+        });
+
+        initChart('obDepth', {
+            grid: { left: '6%', right: '4%', top: '10%', bottom: '12%' },
+            xAxis: { data: ['0.96', '0.98', '1.00', '1.02', '1.04'], axisLabel: { color: '#4a6080', fontSize: 9 } },
+            yAxis: { splitLine: { lineStyle: { color: '#111927' } }, axisLabel: { color: '#4a6080', fontSize: 8 } },
+            series: [
+                { name: '买单', type: 'bar', data: initData.obDepthBid, itemStyle: { color: '#4cd9a0' },
+                barWidth: '30%' },
+                { name: '卖单', type: 'bar', data: initData.obDepthAsk, itemStyle: { color: '#ff5a7a' },
+                barWidth: '30%' }
+            ],
+            legend: { data: ['买单', '卖单'], textStyle: { color: '#4a6080', fontSize: 9 }, bottom: 0 }
+        });
+        initChart('obFootprint', {
+            grid: { left: '6%', right: '4%', top: '10%', bottom: '12%' },
+            xAxis: { data: ['09:30', '09:40', '09:50', '10:00', '10:10'], axisLabel: { color: '#4a6080', fontSize: 8 } },
+            yAxis: { splitLine: { lineStyle: { color: '#111927' } }, axisLabel: { color: '#4a6080', fontSize: 8 } },
+            series: [
+                { name: '主动买', type: 'bar', stack: 'a', data: initData.footprintBuy, itemStyle: { color: '#4cd9a0' },
+                    barWidth: '50%' },
+                { name: '主动卖', type: 'bar', stack: 'a', data: initData.footprintSell, itemStyle: { color: '#ff5a7a' },
+                    barWidth: '50%' },
+                { name: '对倒', type: 'bar', stack: 'a', data: initData.footprintWash, itemStyle: { color: '#4a6a9a' },
+                    barWidth: '50%' }
+            ],
+            legend: { data: ['主动买', '主动卖', '对倒'], textStyle: { color: '#4a6080', fontSize: 9 }, bottom: 0 }
+        });
+        initChart('obOBI', {
+            grid: { left: '6%', right: '4%', top: '10%', bottom: '12%' },
+            xAxis: { data: ['09:30', '09:50', '10:10', '10:30', '10:50'], axisLabel: { color: '#4a6080', fontSize: 8 } },
+            yAxis: { min: -0.5, max: 0.6, splitLine: { lineStyle: { color: '#111927' } },
+            axisLabel: { color: '#4a6080', fontSize: 8 } },
+            series: [{ type: 'line', data: initData.obiData, smooth: true, lineStyle: { color: '#4a8aff', width: 2 },
+                areaStyle: { color: 'rgba(74,138,255,0.15)' }, markLine: { silent: true, data: [{ yAxis: 0.4 },
+                    { yAxis: -0.4 }
+                ], lineStyle: { color: '#ffb347', type: 'dashed' } } }]
+        });
+
+        initChart('posCost', {
+            grid: { left: '6%', right: '4%', top: '10%', bottom: '12%' },
+            xAxis: { data: ['0.80', '0.90', '1.00', '1.10', '1.20'], axisLabel: { color: '#4a6080', fontSize: 9 } },
+            yAxis: { splitLine: { lineStyle: { color: '#111927' } }, axisLabel: { color: '#4a6080', fontSize: 8 } },
+            series: [{ type: 'bar', data: initData.cost, itemStyle: { color: new echarts.graphic.LinearGradient(0,
+                        0, 0, 1, [{ offset: 0, color: '#a78bfa' }, { offset: 1, color: '#4a3a7a' }]),
+                    borderRadius: [4, 4, 0, 0] }, barWidth: '55%',
+                markLine: { silent: true, data: [{ xAxis: '1.00' }], lineStyle: { color: '#ffb347',
+                        type: 'dashed' }, label: { color: '#ffb347', fontSize: 8, formatter: '现价 ' + initData
+                            .price } }
+            }]
+        });
+
+        // 固定图表
+        const fixedOptions = {
+            posTime: {
+                grid: { left: '6%', right: '4%', top: '10%', bottom: '14%' },
+                xAxis: { data: ['3d前', '2d前', '1d前', '今日'], axisLabel: { color: '#4a6080', fontSize: 8 } },
+                yAxis: { splitLine: { lineStyle: { color: '#111927' } }, axisLabel: { color: '#4a6080', fontSize: 8 } },
+                series: [
+                    { name: '幽灵仓', type: 'line', stack: 't', data: [30, 28, 22, 18], areaStyle: { color: '#3a4a6a' },
+                        lineStyle: { color: '#5a7a9a' } },
+                    { name: '长线仓', type: 'line', stack: 't', data: [25, 28, 32, 35],
+                    areaStyle: { color: '#4a6a9a' }, lineStyle: { color: '#6a9aff' } },
+                    { name: '波段仓', type: 'line', stack: 't', data: [20, 24, 28, 32],
+                    areaStyle: { color: '#6a8aaa' }, lineStyle: { color: '#8ab4ff' } },
+                    { name: '超短', type: 'line', stack: 't', data: [25, 20, 18, 15],
+                    areaStyle: { color: '#a78bfa' }, lineStyle: { color: '#c4b5fd' } }
+                ],
+                legend: { data: ['幽灵仓', '长线仓', '波段仓', '超短'], textStyle: { color: '#4a6080', fontSize: 9 },
+                bottom: 0 }
+            },
+            posPnL: {
+                grid: { left: '6%', right: '6%', top: '10%', bottom: '14%' },
+                xAxis: { data: ['09:30', '10:00', '10:30', '11:00', '11:30'], axisLabel: { color: '#4a6080',
+                    fontSize: 8 } },
+                yAxis: [
+                    { splitLine: { lineStyle: { color: '#111927' } }, axisLabel: { color: '#4a6080', fontSize: 8 } },
+                    { splitLine: { show: false }, axisLabel: { color: '#4a6080', fontSize: 8 }, min: 0, max: 1 }
+                ],
+                series: [
+                    { name: '盈利额', type: 'bar', data: [20, 45, 80, 60, 30],
+                        itemStyle: { color: 'rgba(76,217,160,0.7)' } },
+                    { name: '亏损额', type: 'bar', data: [30, 20, 10, 18, 25],
+                        itemStyle: { color: 'rgba(255,90,122,0.7)' } },
+                    { name: '盈亏比', type: 'line', yAxisIndex: 1, data: [0.4, 0.7, 0.9, 0.75, 0.55],
+                        smooth: true, lineStyle: { color: '#ffb347', width: 2 }, symbol: 'circle' }
+                ],
+                legend: { data: ['盈利额', '亏损额', '盈亏比'], textStyle: { color: '#4a6080', fontSize: 9 },
+                bottom: 0 }
+            },
+            riskDeviation: {
+                grid: { left: '6%', right: '4%', top: '10%', bottom: '12%' },
+                xAxis: { data: ['09:30', '10:00', '10:30', '11:00', '11:30'], axisLabel: { color: '#4a6080',
+                    fontSize: 8 } },
+                yAxis: { splitLine: { lineStyle: { color: '#111927' } }, axisLabel: { color: '#4a6080', fontSize: 8 } },
+                series: [
+                    { name: '实际', type: 'line', data: [0.98, 1.00, 1.02, 1.01, 1.02], smooth: true,
+                        lineStyle: { color: '#4cd9a0', width: 2 }, symbol: 'circle' },
+                    { name: '目标', type: 'line', data: [0.98, 1.00, 1.02, 1.04, 1.06], smooth: true,
+                        lineStyle: { color: '#ffb347', width: 2, type: 'dashed' }, symbol: 'diamond' }
+                ],
+                legend: { data: ['实际', '目标'], textStyle: { color: '#4a6080', fontSize: 9 }, bottom: 0 }
+            },
+            riskWash: {
+                grid: { left: '6%', right: '4%', top: '10%', bottom: '12%' },
+                xAxis: { data: ['09:30', '10:00', '10:30', '11:00', '11:30'], axisLabel: { color: '#4a6080',
+                    fontSize: 8 } },
+                yAxis: { splitLine: { lineStyle: { color: '#111927' } }, axisLabel: { color: '#4a6080', fontSize: 8 } },
+                series: [{ type: 'line', data: [3.2, 4.5, 6.8, 5.5, 6.2], smooth: true,
+                    lineStyle: { color: '#4a8aff', width: 2 },
+                    areaStyle: { color: 'rgba(74,138,255,0.15)' }, markLine: { silent: true,
+                        data: [{ yAxis: 5 }], lineStyle: { color: '#ffb347', type: 'dashed' } } }]
+            },
+            riskPnL: {
+                grid: { left: '6%', right: '4%', top: '10%', bottom: '12%' },
+                xAxis: { data: ['09:30', '09:50', '10:10', '10:30', '10:50'], axisLabel: { color: '#4a6080',
+                    fontSize: 8 } },
+                yAxis: { splitLine: { lineStyle: { color: '#111927' } }, axisLabel: { color: '#4a6080', fontSize: 8 } },
+                series: [{ type: 'line', data: [1.2, 2.8, 3.5, 2.0, 2.3], smooth: true,
+                    lineStyle: { color: '#ffb347', width: 2 },
+                    areaStyle: { color: 'rgba(255,179,71,0.15)' }, markLine: { silent: true,
+                        data: [{ yAxis: 0 }], lineStyle: { color: '#4a6080', type: 'solid' } } }]
+            },
+            macroBomb: {
+                series: [{ type: 'pie', radius: ['50%', '70%'], data: [{ value: 72, name: '可控筹码',
+                            itemStyle: { color: '#4cd9a0' } }, { value: 28, name: '外部炸弹',
+                            itemStyle: { color: '#ff5a7a' } }], label: { color: '#b0c8e8', fontSize: 10,
+                            formatter: '{b}\n{d}%' }, labelLine: { lineStyle: { color: '#2a3a5a' } } }]
+            },
+            detailOrderChart1: {
+                grid: { left: '6%', right: '4%', top: '10%', bottom: '12%' },
+                xAxis: { data: ['0.91', '0.93', '0.95', '0.97', '0.99', '1.01', '1.02', '1.04', '1.06', '1.08',
+                        '1.10', '1.12'
+                    ], axisLabel: { color: '#4a6080', fontSize: 8, rotate: 20 } },
+                yAxis: { splitLine: { lineStyle: { color: '#111927' } }, axisLabel: { color: '#4a6080', fontSize: 8 } },
+                series: [
+                    { name: '买单量', type: 'bar', data: [4, 10, 6, 18, 35, 8, 0, 0, 0, 0, 0, 0],
+                        itemStyle: { color: '#4cd9a0' }, barWidth: '30%' },
+                    { name: '卖单量', type: 'bar', data: [0, 0, 0, 0, 0, 0, 12, 6, 22, 4, 15, 8],
+                        itemStyle: { color: '#ff5a7a' }, barWidth: '30%' }
+                ],
+                legend: { data: ['买单量', '卖单量'], textStyle: { color: '#4a6080', fontSize: 9 }, bottom: 0 }
+            },
+            detailOrderChart2: {
+                grid: { left: '6%', right: '4%', top: '10%', bottom: '12%' },
+                xAxis: { data: ['Q9', 'B7', 'A3', 'D5', 'E1'], axisLabel: { color: '#4a6080', fontSize: 9 } },
+                yAxis: { splitLine: { lineStyle: { color: '#111927' } }, axisLabel: { color: '#4a6080', fontSize: 8 } },
+                series: [{ type: 'bar', data: [12, 8, 6, 4, 3], itemStyle: { color: '#ffb347' }, barWidth: '50%' }]
+            },
+            detailHolderChart1: {
+                series: [{ type: 'pie', radius: ['45%', '70%'], data: [{ value: 280, name: '用户3***2' },
+                    { value: 150, name: '用户7***1' }, { value: 120, name: '用户2***8' }, { value: 88,
+                        name: '用户9***4' }, { value: 76, name: '用户4***5' }, { value: 286,
+                        name: '其他用户' }
+                    ], label: { color: '#b0c8e8', fontSize: 9, formatter: '{b}\n{d}%' },
+                    labelLine: { lineStyle: { color: '#2a3a5a' } } }]
+            },
+            detailHolderChart2: {
+                grid: { left: '6%', right: '4%', top: '10%', bottom: '12%' },
+                xAxis: { data: ['0.80', '0.85', '0.90', '0.95', '1.00', '1.05', '1.10', '1.15'],
+                    axisLabel: { color: '#4a6080', fontSize: 8 } },
+                yAxis: { splitLine: { lineStyle: { color: '#111927' } }, axisLabel: { color: '#4a6080', fontSize: 8 } },
+                series: [{ type: 'line', data: [40, 70, 130, 220, 480, 320, 180, 60], smooth: true,
+                        lineStyle: { color: '#a78bfa', width: 2 },
+                        areaStyle: { color: 'rgba(167,139,250,0.2)' }, symbol: 'circle' }]
+            },
+            detailWhaleChart1: {
+                grid: { left: '6%', right: '4%', top: '10%', bottom: '12%' },
+                xAxis: { data: ['08', '10', '12', '14', '16', '18', '20'], axisLabel: { color: '#4a6080',
+                    fontSize: 8 } },
+                yAxis: { splitLine: { lineStyle: { color: '#111927' } }, axisLabel: { color: '#4a6080', fontSize: 8 } },
+                series: [{ name: '净流入', type: 'bar', data: [15, 22, 30, 18, 42, 25, 10],
+                    itemStyle: { color: '#4a8aff' }, barWidth: '50%' }]
+            },
+            detailWhaleChart2: {
+                grid: { left: '6%', right: '4%', top: '10%', bottom: '12%' },
+                xAxis: { data: ['0x7f3', '0x9e1', '0x1a9', '0x2b8', '0x8a1', '其他'],
+                axisLabel: { color: '#4a6080', fontSize: 8 } },
+                yAxis: { splitLine: { lineStyle: { color: '#111927' } }, axisLabel: { color: '#4a6080', fontSize: 8 } },
+                series: [{ type: 'bar', data: [230, 120, 45, 32, 67, 86], itemStyle: { color: '#ffb347' },
+                    barWidth: '45%' }]
+            }
+        };
+
+        Object.keys(fixedOptions).forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                const chart = echarts.init(el, 'dark');
+                chart.setOption(fixedOptions[id]);
+                echartsInstances[id] = chart;
+            }
+        });
+
+        // 风控仪表盘
+        const gaugeChart = initChart('riskGauge', {
+            series: [{
+                type: 'gauge',
+                startAngle: 180,
+                endAngle: 0,
+                min: 0,
+                max: 100,
+                progress: { show: true, width: 12 },
+                pointer: { show: false },
+                axisLine: { lineStyle: { width: 12, color: [
+                        [0.2, '#ff5a7a'],
+                        [0.6, '#ffb347'],
+                        [1, '#4cd9a0']
+                    ] } },
+                axisTick: { show: false },
+                splitLine: { show: false },
+                axisLabel: { show: false },
+                detail: { value: 42, fontSize: 20, color: '#f0f6ff', offsetCenter: [0, '30%'],
+                    formatter: '{value}%' },
+                data: [{ value: 42 }]
+            }]
+        });
+        updateRiskGauge(getCurrentConfig());
+
+        // ================================================================
+        // 初始化
+        // ================================================================
+        const initCfg = getCurrentConfig();
+        refreshAllUI(initCfg);
+        renderAllData(initCfg);
+        if (document.getElementById('page-stable-profit').classList.contains('active')) {
+            renderStableProfitPage(initCfg);
+        }
+        if (document.getElementById('page-trade-risk').classList.contains('active')) {
+            const data = getMockDataForPair(currentPair);
+            updateECharts(data);
+            updateTradeRiskTables(data);
+        }
+        if (document.getElementById('page-user-profile').classList.contains('active')) {
+            loadRuleConfigToForm();
+            renderUserProfile();
+        }
+        document.getElementById('globalPairSelector').value = currentPair;
+
+        // ================================================================
+        // 自适应
+        // ================================================================
+        window.addEventListener('resize', function() {
+            Object.values(echartsInstances).forEach(chart => {
+                if (chart && !chart.isDisposed()) chart.resize();
+            });
+            if (window.stableCharts) {
+                window.stableCharts.forEach(chart => {
+                    if (chart && !chart.isDisposed()) chart.resize();
+                });
+            }
+            if (window.userProfileCharts) {
+                window.userProfileCharts.forEach(chart => {
+                    if (chart && !chart.isDisposed()) chart.resize();
+                });
+            }
+        });
+
+        console.log('完整操盘指挥系统（含用户画像+内嵌规则配置）已加载');
+    </script>
+</body>
+</html>
