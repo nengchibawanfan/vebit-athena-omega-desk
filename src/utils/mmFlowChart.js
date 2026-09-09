@@ -13,7 +13,35 @@ function fmtPrice(value) {
   return n.toLocaleString('zh-CN', { maximumFractionDigits: 6 })
 }
 
-export function mmFlowChartOption({ labels = [], lastHour = [], costHour = [], netHour = [], interval = 3 } = {}) {
+function ohlcOf(raw) {
+  const list = Array.isArray(raw) ? raw : []
+  if (list.length >= 5) return list.slice(1, 5)
+  return list
+}
+
+export function candlesFromCloses(closes = []) {
+  return closes.map((closeRaw, i) => {
+    const close = Number(closeRaw) || 0
+    const prev = i > 0 ? Number(closes[i - 1]) || close : close
+    const open = i === 0 ? close * 0.998 : prev
+    const body = Math.abs(close - open)
+    const wick = Math.max(body * 0.55, Math.abs(close) * 0.0024)
+    const wobble = ((i * 3) % 5) * 0.12
+    const high = Math.max(open, close) + wick * (0.55 + wobble)
+    const low = Math.min(open, close) - wick * (0.45 + (1 - wobble) * 0.35)
+    return [open, close, low, high]
+  })
+}
+
+export function mmFlowChartOption({
+  labels = [],
+  lastHour = [],
+  costHour = [],
+  netHour = [],
+  kline = null,
+  interval = 3
+} = {}) {
+  const candles = Array.isArray(kline) && kline.length ? kline : candlesFromCloses(lastHour)
   const axisLabel = { color: '#4a6080', fontSize: 8 }
   const yAxisBase = {
     splitLine: { lineStyle: { color: '#111927' } },
@@ -28,6 +56,10 @@ export function mmFlowChartOption({ labels = [], lastHour = [], costHour = [], n
       formatter: (params) => {
         const name = params?.[0]?.axisValue ?? ''
         const lines = (params || []).map((item) => {
+          if (item.seriesType === 'candlestick') {
+            const [open, close, low, high] = ohlcOf(item.data)
+            return `${item.marker}K线 开 ${fmtPrice(open)} / 收 ${fmtPrice(close)} / 低 ${fmtPrice(low)} / 高 ${fmtPrice(high)}`
+          }
           if (item.seriesName === '做市净买入') {
             return `${item.marker}${item.seriesName} ${signed(item.value)}万`
           }
@@ -38,7 +70,7 @@ export function mmFlowChartOption({ labels = [], lastHour = [], costHour = [], n
     },
     axisPointer: { link: [{ xAxisIndex: [0, 1] }] },
     legend: {
-      data: ['现价', '库存成本', '做市净买入'],
+      data: ['K线', '库存成本', '做市净买入'],
       textStyle: { color: '#4a6080', fontSize: 10 },
       top: 0
     },
@@ -80,14 +112,18 @@ export function mmFlowChartOption({ labels = [], lastHour = [], costHour = [], n
     ],
     series: [
       {
-        name: '现价',
-        type: 'line',
+        name: 'K线',
+        type: 'candlestick',
         xAxisIndex: 0,
         yAxisIndex: 0,
-        data: lastHour,
-        smooth: true,
-        symbol: 'none',
-        lineStyle: { color: '#e8f0ff', width: 2 }
+        data: candles,
+        barMaxWidth: 14,
+        itemStyle: {
+          color: '#ff5a7a',
+          color0: '#4cd9a0',
+          borderColor: '#ff5a7a',
+          borderColor0: '#4cd9a0'
+        }
       },
       {
         name: '库存成本',

@@ -33,7 +33,7 @@
           <span>🏷️ {{ data.name }}</span>
           <span class="badge">操盘分册</span>
         </div>
-        <p class="blurb">{{ data.blurb }}</p>
+        <p v-if="data.blurb" class="blurb">{{ data.blurb }}</p>
         <div class="persona-switch">
           <router-link
             v-for="item in personaLinks"
@@ -45,7 +45,7 @@
         </div>
         <div class="monitor-status">
           <div v-for="item in data.status" :key="item.text" class="status-item">
-            <span class="status-dot" :class="item.color"></span> {{ item.text }}
+            <span class="status-dot" :class="statusDot(item)"></span> {{ item.text }}
           </div>
         </div>
       </div>
@@ -54,7 +54,7 @@
         <div v-for="kpi in data.kpis" :key="kpi.label" class="kpi-item">
           <div class="label">{{ kpi.label }}</div>
           <div class="kpi-metrics">
-            <div class="value" :style="{ color: kpi.color || '#f0f6ff' }">
+            <div class="value" :style="kpiColor(kpi) ? { color: kpiColor(kpi) } : undefined">
               {{ formatKpi(kpi.value) }}<span v-if="kpi.unit" class="unit">{{ kpi.unit }}</span>
             </div>
             <div v-if="kpi.qty" class="qty">{{ kpi.qty }}</div>
@@ -94,7 +94,7 @@
             </thead>
             <tbody>
               <tr
-                v-for="row in data.rows"
+                v-for="row in personaPager.pagedRows"
                 :key="row.id || row.cluster"
                 class="row-link"
                 @click="row.id && $router.push(userDetailPath(row.id))"
@@ -110,6 +110,13 @@
             </tbody>
           </table>
         </div>
+        <TablePager
+          v-model:page="personaPager.page"
+          v-model:page-size="personaPager.pageSize"
+          :page-count="personaPager.pageCount"
+          :total="personaPager.total"
+          :range-text="personaPager.rangeText"
+        />
       </div>
     </div>
   </PageState>
@@ -124,15 +131,20 @@ import { DEFAULT_RULE_CONFIG, PERSONA_RULE_FIELDS } from '@/config/constants'
 import { loadRuleConfig, saveRuleConfig } from '@/utils/storage'
 import { userDetailPath } from '@/utils/uid'
 import { usePageData } from '@/composables/usePageData'
+import { usePager } from '@/composables/usePager'
 import ChartBox from '@/components/ChartBox.vue'
 import PageState from '@/components/PageState.vue'
 import CollapsibleConfig from '@/components/CollapsibleConfig.vue'
+import TablePager from '@/components/TablePager.vue'
+import { namedHex, personaKpiHex, statusDot } from '@/utils/palette'
 
 const route = useRoute()
 const { loading, error, data, load, bindPair } = usePageData(() =>
   api.getPersonaProfile(route.meta.persona, appState.currentPair)
 )
 bindPair()
+
+const personaPager = usePager(computed(() => data.value?.rows || []))
 
 const rules = reactive({ ...loadRuleConfig() })
 const ruleStatus = ref('配置已加载')
@@ -214,6 +226,10 @@ function cellStyle(col, value) {
   return { color: n >= 0 ? '#6a9aff' : '#ff5a7a' }
 }
 
+function kpiColor(kpi) {
+  return personaKpiHex(kpi, data.value?.key)
+}
+
 function chartOption(chart) {
   const legend = { textStyle: { color: '#4a6080', fontSize: 10 }, top: 0, data: chart.legend || [] }
   const yAxis = { splitLine: { lineStyle: { color: '#111927' } }, axisLabel: { color: '#4a6080', fontSize: 8 } }
@@ -226,16 +242,19 @@ function chartOption(chart) {
       axisLabel: { color: '#4a6080', fontSize: 8, interval: (chart.x || []).length > 12 ? 3 : 0 }
     },
     yAxis,
-    series: (chart.series || []).map((item) => ({
-      name: item.name,
-      type: item.type || 'line',
-      data: item.data || [],
-      smooth: item.type !== 'bar',
-      symbol: item.type === 'bar' ? undefined : 'none',
-      barWidth: item.type === 'bar' ? '28%' : undefined,
-      lineStyle: item.type === 'bar' ? undefined : { color: item.color, width: 2 },
-      itemStyle: { color: item.color }
-    }))
+    series: (chart.series || []).map((item, index) => {
+      const color = namedHex(item.name, index)
+      return {
+        name: item.name,
+        type: item.type || 'line',
+        data: item.data || [],
+        smooth: item.type !== 'bar',
+        symbol: item.type === 'bar' ? undefined : 'none',
+        barWidth: item.type === 'bar' ? '28%' : undefined,
+        lineStyle: item.type === 'bar' ? undefined : { color, width: 2 },
+        itemStyle: { color }
+      }
+    })
   }
 }
 </script>

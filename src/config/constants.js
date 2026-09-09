@@ -32,25 +32,24 @@ export function isDeskToday(dateKey) {
 
 export const PAGE_TITLES = {
   dashboard: '今日总览',
-  'ops-dump': '做市账户今日交易情况 <small>做市卖出 / 买入 · 均价差 · USDT 净增加</small>',
-  'ops-dump-history': '做市账户历史交易情况 <small>单日卖出 / 买入 · 点日期看当日明细</small>',
-  'ops-absorb': '真实用户今日资产情况 <small>所内 USDT + 代币 · 不含做市 / 金库等</small>',
-  'ops-absorb-history': '真实用户历史资产情况 <small>日 USDT / 代币 · 点日期看当日</small>',
-  'ops-ladder': '价格台阶 <small>盘面代币 · 维持该价的预估买入 / 预估卖出</small>',
+  'ops-dump': '做市账户今日 <small>交易 + 资产 · 库存与 USDT</small>',
+  'ops-dump-history': '做市账户历史 <small>交易 + 资产 · 点日期看当日</small>',
+  'ops-absorb': '真实用户今日 <small>交易 + 资产 · 不含做市 / 金库等</small>',
+  'ops-absorb-history': '真实用户历史 <small>交易 + 资产 · 点日期看当日</small>',
+  'ops-ladder': '价格台阶 <small>真实挂单 · 厚度 · 成本偏离</small>',
   'circ-exchange': '交易所内流通总量 <small>活跃 + 沉睡 + 做市账户</small>',
   'circ-onchain': '链上仓库 <small>不能成交 · 充回所内才可卖</small>',
-  orderbook: '用户挂单 <small>剔除做市 · 拉砸会真实成交的墙</small>',
+  orderbook: '盘面情况 <small>真实挂单 · 盘口大单 · 剔除做市</small>',
   position: '筹码行为 <small>持仓成本与用户心理</small>',
   risk: '机器人风控 <small>库存安全与策略参数</small>',
   robots: '机器人运行状态 <small>报价、做市库存与库存带</small>',
-  'robots-config': '机器人配置 <small>做市 UID · 挂单 · 自成交 · 启停 · 策略</small>',
+  'robots-config': '机器人配置 <small>策略 · 挂单 · 自成交 · 报价</small>',
   macro: '宏观威胁 <small>已并入链上仓库</small>',
-  'detail-orders': '挂单明细 <small>真实用户挂单 · 剔除做市</small>',
+  'detail-orders': '盘面情况 <small>已并入真实挂单与盘口大单</small>',
   'detail-holders': '持仓均价 <small>UID 所内剩余存货成本</small>',
   'detail-whales': '充提 <small>货进唯一市场</small>',
   'whales-exchange': '今日充提 <small>所内可卖供给 · 不含做市 / 金库等</small>',
   'whales-exchange-history': '历史充提 <small>日充值 / 提现 · 点日期看当日</small>',
-  'orderbook-blocks': '盘口大单 <small>真实用户大额成交 · 用户买是你卖出</small>',
   'whales-onchain': '链上仓库流水 <small>地址互转，不能成交</small>',
   'detail-external': '链上仓库明细 <small>随时可充回所内的筹码</small>',
   'chips-internal': '金库等 <small>不直接用来买入卖出 · 可周转的账在做市账户</small>',
@@ -59,7 +58,7 @@ export const PAGE_TITLES = {
   'chips-float': '真实浮动筹码 <small>已并入总览</small>',
   'chips-active': '活跃浮动筹码 <small>已并入所内流通</small>',
   'chips-address': '链上地址 <small>仓库门牌 · 会不会充回所内</small>',
-  'desk-user': '单 UID <small>持仓、USDT、买卖 · 他买你卖出、他卖你买入</small>',
+  'desk-user': '单 UID <small>持仓、USDT、买卖</small>',
   'stable-profit': '稳定盈利账户 <small>已并入聪明钱</small>',
   'trade-risk': '交易风控 <small>已并入警报摘要</small>',
   'user-profile': '对手盘 <small>散户是猎物 · 聪明钱会跟你对做</small>',
@@ -70,60 +69,42 @@ export const PAGE_TITLES = {
   'persona-prog': '程序化交易 <small>扫薄档 · 和自有挂价分开</small>',
   'desk-mm': '做市账户今日资产情况 <small>你的代币和 USDT · 部分可能是从用户借入的虚增</small>',
   'desk-mm-history': '做市账户历史资产情况 <small>做市库存与现金 · 期末对齐今日</small>',
-  'desk-users': '真实用户今日交易情况 <small>不含做市 · 用户买是你卖出、用户卖是你买入</small>',
-  'desk-users-history': '真实用户历史交易情况 <small>单日买 / 卖 · 点日期看当日明细</small>',
-  'orderbook-obi': '厚度与偏离 <small>近端用户挂单 + 现价相对持仓均价</small>',
-  'position-cost': '厚度与偏离 <small>近端用户挂单 + 现价相对持仓均价</small>',
-  'stance-combo': '厚度与偏离 <small>近端用户挂单 + 现价相对持仓均价</small>',
-  alerts: '警报 <small>充值、买墙、偏离、库存带</small>'
+  'desk-users': '真实用户今日 <small>交易 + 资产 · 不含做市 / 金库等</small>',
+  'desk-users-history': '真实用户历史 <small>交易 + 资产 · 点日期看当日</small>',
+  'desk-users-chips': '筹码分布 <small>持仓均价 · 活跃 / 沉睡 · 不含做市 / 金库等</small>',
+  'orderbook-obi': '价格台阶 <small>真实挂单 · 厚度 · 成本偏离</small>',
+  'position-cost': '价格台阶 <small>真实挂单 · 厚度 · 成本偏离</small>',
+  'stance-combo': '价格台阶 <small>真实挂单 · 厚度 · 成本偏离</small>',
+  alerts: '报警 <small>充值、买墙、偏离、库存带</small>'
 }
 
 export const NAV_ITEMS = [
   { divider: true, label: '操盘' },
   { to: '/', page: 'dashboard', icon: '📊', label: '总览' },
   { to: '/ops/ladder', page: 'ops-ladder', icon: '🪜', label: '价格台阶' },
-  { to: '/ops/stance', page: 'stance-combo', icon: '📐', label: '厚度与偏离' },
   {
     icon: '🤖',
     label: '做市账户',
     children: [
-      { to: '/ops/dump', page: 'ops-dump', icon: '📤', label: '今日交易情况' },
-      { to: '/ops/dump/history', page: 'ops-dump-history', icon: '📜', label: '历史交易情况' },
-      { to: '/desk/mm', page: 'desk-mm', icon: '💰', label: '今日资产情况' },
-      { to: '/desk/mm/history', page: 'desk-mm-history', icon: '📒', label: '历史资产情况' }
+      { to: '/ops/dump', page: 'ops-dump', icon: '📤', label: '今日' },
+      { to: '/ops/dump/history', page: 'ops-dump-history', icon: '📜', label: '历史' }
     ]
   },
   {
     icon: '👥',
     label: '真实用户',
     children: [
-      { to: '/desk/users', page: 'desk-users', icon: '👥', label: '今日交易情况' },
-      { to: '/desk/users/history', page: 'desk-users-history', icon: '📜', label: '历史交易情况' },
-      { to: '/ops/absorb', page: 'ops-absorb', icon: '💰', label: '今日资产情况' },
-      { to: '/ops/absorb/history', page: 'ops-absorb-history', icon: '📒', label: '历史资产情况' },
+      { to: '/desk/users', page: 'desk-users', icon: '👥', label: '今日' },
+      { to: '/desk/users/history', page: 'desk-users-history', icon: '📜', label: '历史' },
+      { to: '/desk/users/chips', page: 'desk-users-chips', icon: '📊', label: '筹码分布' },
       { to: '/desk/user', page: 'desk-user', icon: '🔎', label: '单 UID', match: 'user' }
-    ]
-  },
-  {
-    icon: '🎯',
-    label: '真实用户成本',
-    children: [
-      { to: '/chips/user', page: 'chips-user', icon: '🎯', label: '真实用户持仓均价' }
     ]
   },
   { divider: true, label: '对手盘' },
   { to: '/user-profile/retail', page: 'persona-retail', icon: '👤', label: '散户' },
   { to: '/user-profile/smart', page: 'persona-smart', icon: '🧠', label: '聪明钱' },
   { divider: true, label: '盘口' },
-  {
-    icon: '⚡',
-    label: '挂单',
-    children: [
-      { to: '/orderbook', page: 'orderbook', icon: '⚡', label: '买卖墙' },
-      { to: '/detail-orders', page: 'detail-orders', icon: '📋', label: '明细' },
-      { to: '/orderbook/blocks', page: 'orderbook-blocks', icon: '🐋', label: '大单' }
-    ]
-  },
+  { to: '/orderbook', page: 'orderbook', icon: '⚡', label: '盘面情况' },
   { divider: true, label: '自己的账' },
   {
     icon: '🦾',
@@ -135,16 +116,6 @@ export const NAV_ITEMS = [
   },
   { to: '/chips/internal', page: 'chips-internal', icon: '🔒', label: '金库等' },
   { divider: true, label: '仓库' },
-  { to: '/circ/exchange', page: 'circ-exchange', icon: '🏦', label: '所内流通' },
-  {
-    icon: '⛓️',
-    label: '链上',
-    children: [
-      { to: '/circ/onchain', page: 'circ-onchain', icon: '⛓️', label: '总量' },
-      { to: '/chips/external', page: 'chips-external', icon: '📦', label: '明细' },
-      { to: '/chips/external/address', page: 'chips-address', icon: '🔎', label: '链上地址', match: 'address' }
-    ]
-  },
   {
     icon: '🚚',
     label: '充提',
@@ -154,7 +125,7 @@ export const NAV_ITEMS = [
     ]
   },
   { divider: true, label: '监控' },
-  { to: '/alerts', page: 'alerts', icon: '🚨', label: '警报' }
+  { to: '/alerts', page: 'alerts', icon: '🚨', label: '报警' }
 ]
 
 export const PERSONA_PAGES = [
@@ -174,68 +145,123 @@ export const ROBOT_STRATEGIES = [
 ]
 
 export const QUOTE_SPREAD_TYPES = [
-  { value: 'fixed', label: 'fixed' },
-  { value: 'percent', label: 'percent' }
+  { value: 'fixed', label: '固定' },
+  { value: 'percent', label: '百分比' }
 ]
 
+export const DEFAULT_ORDER_RULE = {
+  id: 1,
+  minPrice: 0.1,
+  maxPrice: 0.3,
+  minAmt: 10000,
+  maxAmt: 20000,
+  count: 5
+}
+
+export const DEFAULT_ORDER = {
+  bid: [{ id: 1, minPrice: 0.1, maxPrice: 0.3, minAmt: 10000, maxAmt: 20000, count: 5 }],
+  ask: [{ id: 1, minPrice: 0.1, maxPrice: 0.3, minAmt: 10000, maxAmt: 20000, count: 5 }]
+}
+
+export const ORDER_SIDES = [
+  { key: 'ask', label: 'Ask 卖' },
+  { key: 'bid', label: 'Bid 买' }
+]
+
+export const ORDER_RULE_FIELDS = [
+  { key: 'minPrice', label: '最小百分比', hint: '0.1 = 千分之一', step: '0.01' },
+  { key: 'maxPrice', label: '最大百分比', hint: '0.3 = 千分之三', step: '0.01' },
+  { key: 'minAmt', label: '最小每单数量 (USDT)', step: '0.00000001' },
+  { key: 'maxAmt', label: '最大每单数量 (USDT)', step: '0.00000001' },
+  { key: 'count', label: '挂单数量', step: '1' }
+]
+
+export const DEFAULT_WASH = {
+  minIntervalMs: 1000
+}
+
 export const DEFAULT_QUOTE = {
-  id: 210,
-  enabled: true,
   spreadType: 'fixed',
   bidSpread: 0.1,
   askSpread: 0.1,
   minDistance: 0.1,
   maxDistance: 0.2,
-  priceRandom: 1,
-  minBuyAmt: 10000,
-  maxBuyAmt: 20000,
-  minSellAmt: 10000,
-  maxSellAmt: 20000,
-  bidDepth: 5,
-  askDepth: 5,
-  intervalMs: 1000,
-  maxIntervalMs: 1000,
-  washEnabled: false,
-  baseVolScale: 0.01,
-  spikeBaseVol: 1500,
-  forceMin: 3,
-  forceMax: 9,
-  priceAmp: 100,
-  spikeProb: 0,
-  spikeVolGrowth: 5000,
-  effectiveVol: 10
+  priceRandom: 1
 }
 
+export const WASH_FIELDS = [
+  { key: 'minIntervalMs', label: '最小成交时间间隔 (ms)', step: '1' }
+]
+
 export const QUOTE_FIELDS = [
-  { key: 'enabled', label: '状态', type: 'toggle' },
   { key: 'spreadType', label: '价差类型', type: 'select', options: QUOTE_SPREAD_TYPES },
   { key: 'bidSpread', label: '买盘价差', step: '0.00000001' },
   { key: 'askSpread', label: '卖盘价差', step: '0.00000001' },
   { key: 'minDistance', label: '盘口最小距离', step: '0.00000001' },
   { key: 'maxDistance', label: '盘口最大距离', step: '0.00000001' },
-  { key: 'priceRandom', label: '价格随机比例', step: '0.00000001' },
-  { key: 'minBuyAmt', label: '买单最小金额', step: '0.00000001' },
-  { key: 'maxBuyAmt', label: '买单最大金额', step: '0.00000001' },
-  { key: 'minSellAmt', label: '卖单最小金额', step: '0.00000001' },
-  { key: 'maxSellAmt', label: '卖单最大金额', step: '0.00000001' },
-  { key: 'bidDepth', label: '买盘深度', step: '1' },
-  { key: 'askDepth', label: '卖盘深度', step: '1' },
-  { key: 'intervalMs', label: '下单间隔(ms)', step: '1' },
-  { key: 'maxIntervalMs', label: '最大间隔(ms)', step: '1' },
-  { key: 'washEnabled', label: '自成交', type: 'toggle' },
-  { key: 'baseVolScale', label: '基础成交额 Scale', step: '0.00000001' },
-  { key: 'spikeBaseVol', label: 'Spike 基础成交额', step: '0.00000001' },
-  { key: 'forceMin', label: '强制成交最小次数', step: '1' },
-  { key: 'forceMax', label: '强制成交最大次数', step: '1' },
-  { key: 'priceAmp', label: '价格变化放大系数', step: '0.00000001' },
-  { key: 'spikeProb', label: '基础 Spike 概率', step: '0.00000001' },
-  { key: 'spikeVolGrowth', label: 'Spike 成交额增长系数', step: '0.00000001' },
-  { key: 'effectiveVol', label: '有效成交额阈值', step: '0.00000001' }
+  { key: 'priceRandom', label: '价格随机比例', step: '0.00000001' }
 ]
+
+export const STRATEGY_SECTIONS = [
+  { key: 'order', title: '挂单配置', hint: '百分比相对现价，0.1–0.3 即千分之一到千分之三', type: 'order' },
+  { key: 'wash', title: '自成交配置', fields: WASH_FIELDS },
+  { key: 'quote', title: '报价配置', hint: '价差、盘口距离、价格抖动', fields: QUOTE_FIELDS }
+]
+
+function strategyPack(order = {}, wash = {}, quote = {}) {
+  return {
+    order: order.bid || order.ask
+      ? { bid: order.bid || [], ask: order.ask || [] }
+      : { bid: DEFAULT_ORDER.bid.map((item) => ({ ...item })), ask: DEFAULT_ORDER.ask.map((item) => ({ ...item })) },
+    wash: { ...DEFAULT_WASH, ...wash },
+    quote: { ...DEFAULT_QUOTE, ...quote }
+  }
+}
+
+export const DEFAULT_STRATEGIES = {
+  quote: strategyPack(),
+  guard: strategyPack(
+    {
+      bid: [
+        { id: 1, minPrice: 0.05, maxPrice: 0.15, minAmt: 15000, maxAmt: 30000, count: 5 },
+        { id: 2, minPrice: 0.2, maxPrice: 0.4, minAmt: 20000, maxAmt: 40000, count: 3 }
+      ],
+      ask: [
+        { id: 1, minPrice: 0.1, maxPrice: 0.3, minAmt: 5000, maxAmt: 12000, count: 3 }
+      ]
+    },
+    {},
+    { bidSpread: 0.05, askSpread: 0.18, minDistance: 0.05, maxDistance: 0.15 }
+  ),
+  inventory: strategyPack(
+    {
+      bid: [{ id: 1, minPrice: 0.15, maxPrice: 0.35, minAmt: 8000, maxAmt: 18000, count: 4 }],
+      ask: [{ id: 1, minPrice: 0.15, maxPrice: 0.35, minAmt: 8000, maxAmt: 18000, count: 4 }]
+    },
+    {},
+    { bidSpread: 0.15, askSpread: 0.15, minDistance: 0.12, maxDistance: 0.3 }
+  ),
+  follow: strategyPack(
+    {
+      bid: [{ id: 1, minPrice: 0.05, maxPrice: 0.15, minAmt: 6000, maxAmt: 12000, count: 3 }],
+      ask: [{ id: 1, minPrice: 0.05, maxPrice: 0.15, minAmt: 6000, maxAmt: 12000, count: 3 }]
+    },
+    {},
+    { bidSpread: 0.06, askSpread: 0.06, minDistance: 0.04, maxDistance: 0.1, priceRandom: 0.5 }
+  ),
+  passive: strategyPack(
+    {
+      bid: [{ id: 1, minPrice: 0.2, maxPrice: 0.5, minAmt: 10000, maxAmt: 25000, count: 6 }],
+      ask: [{ id: 1, minPrice: 0.2, maxPrice: 0.5, minAmt: 10000, maxAmt: 25000, count: 6 }]
+    },
+    {},
+    { bidSpread: 0.2, askSpread: 0.2, minDistance: 0.15, maxDistance: 0.4 }
+  )
+}
 
 export const DEFAULT_ROBOT = {
   enabled: true,
-  quotes: [{ ...DEFAULT_QUOTE }],
+  strategies: DEFAULT_STRATEGIES,
   bots: [
     { uid: '88001', running: true, strategy: 'quote', wash: true },
     { uid: '88002', running: true, strategy: 'inventory', wash: false }

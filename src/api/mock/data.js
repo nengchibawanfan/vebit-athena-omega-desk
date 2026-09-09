@@ -1,5 +1,5 @@
 import { DEFAULT_CONFIG, DESK_AS_OF, INTERNAL_ACCOUNT_TYPES, PAIRS, PERSONA_PAGES, deskDateLabel, deskDateTitle, isDeskToday, normalizeDeskDate } from '@/config/constants'
-import { cloneRobot, strategyLabel, syncRobotBots } from '@/utils/robotConfig'
+import { botWashOn, cloneRobot, orderSideCount, strategyLabel, strategyPackOf, syncRobotBots } from '@/utils/robotConfig'
 
 export const PAIR_DATA = {
   'VBT/USDT': {
@@ -24,8 +24,8 @@ export const PAIR_DATA = {
     whaleAlert: '1条新警报',
     alertSummary: '3条待处理',
     alertItems: [
-      { time: '10:42:18', level: '紧急', color: '#ff5a7a', text: '做市账户 USDT 告急，买入资金不够', to: '/desk/mm' },
-      { time: '10:38:02', level: '预警', color: '#ffb347', text: '近端卖墙变厚，再拉是高位买货', to: '/ops/stance' },
+      { time: '10:42:18', level: '紧急', color: '#ff5a7a', text: '做市账户 USDT 告急，买入资金不够', to: '/ops/dump' },
+      { time: '10:38:02', level: '预警', color: '#ffb347', text: '近端卖墙变厚，再拉是高位买货', to: '/ops/ladder' },
       { time: '10:21:55', level: '关注', color: '#4a8aff', text: '大额充值进所 230万，供给增加', to: '/whales/exchange' }
     ],
     costBadge: '密集峰 1.00',
@@ -97,8 +97,8 @@ export const PAIR_DATA = {
     whaleAlert: '2条新警报',
     alertSummary: '4条待处理',
     alertItems: [
-      { time: '10:36:11', level: '紧急', color: '#ff5a7a', text: '做市账户 USDT 告急，买入资金不够', to: '/desk/mm' },
-      { time: '10:31:44', level: '预警', color: '#ffb347', text: '近端卖墙变厚，再拉是高位买货', to: '/ops/stance' },
+      { time: '10:36:11', level: '紧急', color: '#ff5a7a', text: '做市账户 USDT 告急，买入资金不够', to: '/ops/dump' },
+      { time: '10:31:44', level: '预警', color: '#ffb347', text: '近端卖墙变厚，再拉是高位买货', to: '/ops/ladder' },
       { time: '10:18:20', level: '关注', color: '#4a8aff', text: '大额充值进所 180万，供给增加', to: '/whales/exchange' },
       { time: '10:12:08', level: '关注', color: '#a78bfa', text: '链上仓库转入 96万 · 可能充回', to: '/circ/onchain' }
     ],
@@ -367,6 +367,35 @@ function toTransferU(qtyWan, last) {
   return Number((Number(qtyWan || 0) * Number(last || 1)).toFixed(1))
 }
 
+function packLargestKpis(row) {
+  if (!row) {
+    return {
+      largestAmt: 0,
+      largestU: 0,
+      largestUid: '—',
+      largestAction: '—',
+      largestTime: '—',
+      largestTag: '',
+      largestTagClass: '',
+      largestChain: '—',
+      largestStatus: '—',
+      largestStatusTag: ''
+    }
+  }
+  return {
+    largestAmt: row.amount,
+    largestU: row.amountU,
+    largestUid: row.uid,
+    largestAction: row.action,
+    largestTime: row.time,
+    largestTag: row.tag || '',
+    largestTagClass: row.tagClass || '',
+    largestChain: row.chain || '—',
+    largestStatus: row.status || '—',
+    largestStatusTag: row.statusTag || ''
+  }
+}
+
 function topByAction(rows, action, limit = 6) {
   const map = new Map()
   ;(rows || []).filter((row) => row.action === action).forEach((row) => {
@@ -466,9 +495,7 @@ function buildTransferToday(pair, threshold = 50, internalAccounts = []) {
       transferNetU: toTransferU(transferNet, last),
       alertCount,
       pending,
-      largestAmt: largest ? largest.amount : 0,
-      largestUid: largest ? largest.uid : '—',
-      largestAction: largest ? largest.action : '—',
+      ...packLargestKpis(largest),
       topDepositShare,
       skippedInternal: internalUids.size,
       depositVsPrev: 0,
@@ -551,9 +578,7 @@ function applyTransferDay(payload, pair, threshold, internalAccounts, dateKey) {
       payload.kpis.transferNetU = toTransferU(day.netAmt, last)
       payload.kpis.alertCount = Math.max(0, Math.round((payload.kpis.alertCount || 0) * ((depScale + wdScale) / 2)))
       payload.kpis.pending = Math.max(0, Math.round((payload.kpis.pending || 0) * ((depScale + wdScale) / 2)))
-      payload.kpis.largestAmt = largest ? largest.amount : 0
-      payload.kpis.largestUid = largest ? largest.uid : '—'
-      payload.kpis.largestAction = largest ? largest.action : '—'
+      Object.assign(payload.kpis, packLargestKpis(largest))
       payload.kpis.topDepositShare = day.depositAmt
         ? Number((payload.topDeposits.slice(0, 3).reduce((sum, row) => sum + row.amount, 0) / day.depositAmt * 100).toFixed(1))
         : 0
@@ -944,11 +969,10 @@ export function generatePersonaProfile(type, pair) {
 
   const packs = {
     smart: () => ({
-      blurb: '会跟你对做。你拉他们卖，你砸他们买。买入卖出时他们是最危险的对手，不是猎物。',
+      blurb: '',
       status: [
         { color: 'green', text: `覆盖 ${count} 人 · 占全站 ${tag.ratio}` },
         { color: 'green', text: `均胜率 ${68 + seed}% · 均盈亏比 ${(1.8 + seed * 0.1).toFixed(1)}` },
-        { color: 'yellow', text: '今日净买入偏多：你砸盘买入时，他们在跟你抢货' },
         { color: 'green', text: '规则：交易笔数 / 胜率 / 盈亏比 / 单笔仓位' }
       ],
       kpis: [
@@ -983,11 +1007,10 @@ export function generatePersonaProfile(type, pair) {
       }))
     }),
     retail: () => ({
-      blurb: '人数最多、最情绪化。追涨时接你的卖出；刚翻亏时把货砍给你买入。深套会扛着不动。',
+      blurb: '',
       status: [
         { color: 'yellow', text: `覆盖 ${count} 人 · 占全站 ${tag.ratio}` },
         { color: 'yellow', text: `均胜率 ${31 + seed}% · 浮亏账户 ${58 + seed}%` },
-        { color: 'red', text: '今日追涨偏多：成本上移，回撤后会集中砍仓，那是买入窗口' },
         { color: 'green', text: '规则：交易笔数 / 净收益 / 胜率 / 持仓时间比 / 强平率' }
       ],
       kpis: [
@@ -996,7 +1019,7 @@ export function generatePersonaProfile(type, pair) {
         { label: '浮亏占比', value: 58 + seed, unit: '%', qty: `${Math.round(count * (0.58 + seed / 100))} 人`, sub: '持仓成本高于现价', color: '#ff5a7a' },
         { label: '今日净买入', value: Number((-6.4 - seed * 1.1).toFixed(1)), unit: '万', sub: '正数=接你卖出 · 负数=给你买入', color: '#ffb347' },
         { label: '均持仓', value: Number((3.2 + seed * 0.2).toFixed(1)), unit: '天', sub: '喜欢扛单', color: '#ffb347' },
-        { label: '今日强平/止损', value: 14 + seed, unit: '人', sub: '盘口冲击偏卖' }
+        { label: '今日强平/止损', value: 14 + seed, unit: '人', sub: '盘口冲击偏卖', color: '#ff5a7a' }
       ],
       charts: [
         { title: '人数趋势', badge: '近7天', x: dates, legend: ['散户'], series: [{ name: '散户', type: 'line', data: USER_PROFILE.trend.retail, color: meta.color }] },
@@ -1030,7 +1053,6 @@ export function generatePersonaProfile(type, pair) {
       status: [
         { color: 'red', text: `覆盖 ${count} 人 · 占全站 ${tag.ratio}` },
         { color: 'yellow', text: `设备簇 ${8 + seed} 个 · IP 簇 ${5 + seed} 个` },
-        { color: 'yellow', text: '今日 3 个簇在同一分钟内集中成交，疑似脚本' },
         { color: 'green', text: '规则：同一设备账户数 / 同一 IP 段账户数' }
       ],
       kpis: [
@@ -1191,7 +1213,7 @@ export function generateUserChips(pair, sleepIdleDays = 30, internalAccounts) {
   const px = pairPxMeta(d)
 
   const topIds = DETAIL_HOLDERS.map((row) => row.id)
-  const n = 36
+  const n = userCount
   const rows = []
   for (let i = 0; i < n; i++) {
     const amountRaw = Number((260 * (0.86 ** i) + ((i * 11 + pairSeed * 5) % 16)).toFixed(1))
@@ -1381,7 +1403,7 @@ export function generateUserChips(pair, sleepIdleDays = 30, internalAccounts) {
 
   return {
     formula: '所内真实用户的剩余存货成本。不含做市账户，也不含金库 / 项目方 / 员工 / LP。买入按成交价入库，充值按到账现价入库；卖出只减数量。现价高于均价=浮盈会兑现；刚跌破均价=砍仓；深套=再砸不动。',
-    badge: `真实用户 ${userCount} 人 · 展示前${n}名 · 不含做市 / 金库等`,
+    badge: `真实用户 ${userCount} 人 · 不含做市 / 金库等`,
     kpis: {
       totalAmount: exchTotal,
       activeAmount,
@@ -2062,6 +2084,39 @@ function fmtDeskPrice(price) {
   return Number(n.toFixed(6))
 }
 
+function generateUserPriceFlow({ lastPrice, avgBuy, avgSell, realBuy, realSell, pairSeed = 1 }) {
+  const last = Number(lastPrice) || Number(avgBuy) || 1
+  const buyPx = Number(avgBuy) || last
+  const sellPx = Number(avgSell) || last
+  const lo = Math.min(last, buyPx, sellPx) * 0.985
+  const hi = Math.max(last, buyPx, sellPx) * 1.015
+  const steps = 10
+  const step = (hi - lo) / steps || last * 0.002
+  const labels = []
+  const prices = []
+  const buyW = []
+  const sellW = []
+  for (let i = 0; i <= steps; i++) {
+    const price = fmtDeskPrice(lo + step * i)
+    prices.push(price)
+    labels.push(String(price))
+    const db = (price - buyPx) / step
+    const ds = (price - sellPx) / step
+    const noise = 0.1 + ((i * 7 + Number(pairSeed) * 3) % 5) * 0.05
+    buyW.push(Math.exp(-0.45 * db * db) + noise)
+    sellW.push(Math.exp(-0.45 * ds * ds) + noise * 0.85)
+  }
+  return {
+    labels,
+    prices,
+    buy: scaleHourSeries(buyW, realBuy),
+    sell: scaleHourSeries(sellW, realSell),
+    lastPrice: fmtDeskPrice(last),
+    avgBuy: fmtDeskPrice(buyPx),
+    avgSell: fmtDeskPrice(sellPx)
+  }
+}
+
 function priceDevPct(last, cost) {
   const a = Number(last)
   const b = Number(cost)
@@ -2238,6 +2293,11 @@ function applyDumpDay(dump, pair, internalAccounts, dateKey) {
       sellHour: dump.sellHour,
       buyHour: dump.buyHour
     })
+    const realUsers = Math.max(1, Number(dump.realUsers) || 48)
+    dump.sellUsers = Math.min(realUsers, Math.max(1, Math.round(realUsers * (0.54 + pairSeed * 0.02))))
+    dump.buyUsers = Math.min(realUsers, Math.max(1, Math.round(realUsers * (0.49 + pairSeed * 0.015))))
+    dump.sellFills = dump.sellUsers * (5 + (pairSeed % 4))
+    dump.buyFills = dump.buyUsers * (4 + ((pairSeed + 1) % 4))
   }
 
   const attachFlow = () => {
@@ -2393,7 +2453,7 @@ export function generateRobotStatus(pair, accountsConfig = [], robotConfig = nul
     const sellFill = Number((110 + (hashUid(`${item.uid}s`) % 75)).toFixed(1))
     const tradePnl = calcMmTradingPnl(buyFill, sellFill, avgBuy, avgSell, price)
     const latency = 12 + (hashUid(item.uid) % 18)
-    const washOn = running && robotCfg.wash.enabled && bot.wash !== false
+    const washOn = running && botWashOn(robotCfg, bot)
     const status = !running ? '已停止' : !online ? '离线' : (Math.abs(tradePnl.totalU) > 8 ? '告警' : '运行中')
     return {
       uid: item.uid,
@@ -2435,6 +2495,18 @@ export function generateRobotStatus(pair, accountsConfig = [], robotConfig = nul
     : spreadBps
   const cover = robots.length ? Number((92 + (pairSeed % 6) + onlineCount).toFixed(1)) : 0
   const bandStatus = robotInv < 40 ? '库存偏低' : robotInv > 60 ? '库存偏高' : '安全区间'
+  const usedStrategies = [...new Set(robots.filter((row) => row.running).map((row) => row.strategy))]
+  const quoteBits = usedStrategies.map((key) => {
+    const pack = strategyPackOf(robotCfg, key)
+    return `${strategyLabel(key)} bid ${orderSideCount(pack.order.bid)} / ask ${orderSideCount(pack.order.ask)}`
+  })
+  const washOnBots = robots.filter((row) => row.running && row.washOn)
+  const washMs = usedStrategies.length
+    ? strategyPackOf(robotCfg, usedStrategies[0]).wash.minIntervalMs
+    : robotCfg.wash?.intervalMs
+  const washText = washOnBots.length
+    ? `自成交 ${washOnBots.length} UID · 间隔 ${washMs}ms`
+    : '自成交关'
 
   const events = [
     { time: '10:21:06', uid: robots[0]?.uid || '—', type: '扩买盘', detail: '库存回落，买一加挂 8.0 万', tag: 'success' },
@@ -2471,8 +2543,8 @@ export function generateRobotStatus(pair, accountsConfig = [], robotConfig = nul
     status: [
       { color: !robotCfg.enabled ? 'red' : onlineCount && onlineCount === robots.length ? 'green' : onlineCount ? 'yellow' : 'red', text: robots.length ? `${onlineCount}/${robots.length} 台做市在线` : '未配置做市账户 UID' },
       { color: bandStatus === '安全区间' ? 'green' : 'yellow', text: `做市库存 ${fmtQtyPlain(borrowedAmount)}万 · 自有 ${fmtQtyPlain(book.tokenOwn)} · 借入虚增 ${fmtQtyPlain(book.tokenBorrowed)} · ${bandStatus}` },
-      { color: 'green', text: `报价覆盖 ${cover}% · 买/卖 ${robotCfg.quote.bidDepth}/${robotCfg.quote.askDepth} 档 · 间隔 ${robotCfg.quote.intervalMs}ms` },
-      { color: robotCfg.wash.enabled ? 'yellow' : 'green', text: robotCfg.wash.enabled ? '自成交开' : '自成交关' },
+      { color: 'green', text: quoteBits.length ? `报价覆盖 ${cover}% · ${quoteBits.join(' · ')}` : `报价覆盖 ${cover}%` },
+      { color: washOnBots.length ? 'yellow' : 'green', text: washText },
       { color: tradePnl.totalU >= 0 ? 'green' : 'yellow', text: `今日盈亏 ${tradePnl.totalU >= 0 ? '+' : ''}${tradePnl.totalU} 万USDT · 交易盈亏 ${tradePnl.realizedU >= 0 ? '+' : ''}${tradePnl.realizedU} · 浮盈 ${tradePnl.floatU >= 0 ? '+' : ''}${tradePnl.floatU}` }
     ],
     history: { hours, inventory, buyVol, sellVol, pnl, spread },
@@ -2628,8 +2700,37 @@ export function generateMmToday(pair, internalAccounts) {
   }
 }
 
-export function generateMmHistory(pair, days = 15, internalAccounts = []) {
-  const n = [7, 15, 30].includes(Number(days)) ? Number(days) : 15
+const MM_HISTORY_SPLIT_KEYS = [
+  'equityU', 'cashU', 'cashTrueU', 'cashOwnU', 'cashBorrowedU',
+  'tokenU', 'tokenInv', 'tokenOwn', 'tokenBorrowed', 'buyQty', 'sellQty', 'realizedU'
+]
+
+function finishMmHistoryDay(row, out) {
+  out.netQty = Number((Number(out.buyQty || 0) - Number(out.sellQty || 0)).toFixed(1))
+  out.cashPct = out.equityU ? Number((out.cashU / out.equityU * 100).toFixed(1)) : 0
+  out.date = row.date
+  out.dateKey = row.dateKey
+  return out
+}
+
+function scaleMmHistoryDay(row, share) {
+  const out = {}
+  MM_HISTORY_SPLIT_KEYS.forEach((key) => {
+    out[key] = Number((Number(row[key] || 0) * share).toFixed(1))
+  })
+  return finishMmHistoryDay(row, out)
+}
+
+function remainderMmHistoryDay(row, parts) {
+  const out = {}
+  MM_HISTORY_SPLIT_KEYS.forEach((key) => {
+    const used = parts.reduce((sum, part) => sum + Number(part[key] || 0), 0)
+    out[key] = Number((Number(row[key] || 0) - used).toFixed(1))
+  })
+  return finishMmHistoryDay(row, out)
+}
+
+export function generateMmHistory(pair, days, internalAccounts = []) {
   const desk = generateDashboardDesk(pair, internalAccounts)
   const mm = desk.mm
   const pairSeed = pairSeedOfName(pair)
@@ -2637,6 +2738,8 @@ export function generateMmHistory(pair, days = 15, internalAccounts = []) {
   const base = parts[0] || 'TOKEN'
   const quote = parts[1] || 'USDT'
   const FULL = 30
+  const requested = Number(days)
+  const n = [7, 15, 30].includes(requested) ? requested : FULL
   const all = []
 
   for (let i = 0; i < FULL; i++) {
@@ -2694,6 +2797,28 @@ export function generateMmHistory(pair, days = 15, internalAccounts = []) {
   const maxInv = Math.max(...invs)
   const minInv = Math.min(...invs)
 
+  const robot = generateRobotStatus(pair, internalAccounts)
+  const mmBots = robot.robots || []
+  const shareSum = mmBots.reduce((sum, bot) => sum + Number(bot.ratio || 0), 0) || 1
+  const displayRows = [...rowsAsc].reverse()
+  const accountBooks = mmBots.map((bot, index) => {
+    const share = Number(bot.ratio || 0) / shareSum
+    const isLast = index === mmBots.length - 1
+    const rows = displayRows.map((row) => {
+      if (!isLast) return scaleMmHistoryDay(row, share)
+      const others = mmBots.slice(0, -1).map((item) => (
+        scaleMmHistoryDay(row, Number(item.ratio || 0) / shareSum)
+      ))
+      return remainderMmHistoryDay(row, others)
+    })
+    return {
+      uid: bot.uid,
+      remark: bot.remark,
+      role: bot.role,
+      rows
+    }
+  })
+
   return {
     range: n,
     pair,
@@ -2739,7 +2864,7 @@ export function generateMmHistory(pair, days = 15, internalAccounts = []) {
       },
       {
         color: periodNet >= 0 ? 'green' : 'yellow',
-        text: `区间买 ${fmtQtyPlain(periodBuy)} / 卖 ${fmtQtyPlain(periodSell)}万 · 净 ${signedPlain(periodNet)} · 交易盈亏 ${signedPlain(periodRealized)}万USDT`
+        text: `买 ${fmtQtyPlain(periodBuy)} / 卖 ${fmtQtyPlain(periodSell)}万 · 净 ${signedPlain(periodNet)} · 交易盈亏 ${signedPlain(periodRealized)}万USDT`
       }
     ],
     series: {
@@ -2758,12 +2883,12 @@ export function generateMmHistory(pair, days = 15, internalAccounts = []) {
       cashPct: rowsAsc.map((row) => row.cashPct),
       realizedU: rowsAsc.map((row) => row.realizedU)
     },
-    rows: [...rowsAsc].reverse()
+    rows: displayRows,
+    accountBooks
   }
 }
 
-export function generateTradeHistory(pair, days = 15, internalAccounts = []) {
-  const n = [7, 15, 30].includes(Number(days)) ? Number(days) : 15
+export function generateTradeHistory(pair, days, internalAccounts = []) {
   const desk = generateDashboardDesk(pair, internalAccounts)
   const mm = desk.mm
   const pairSeed = pairSeedOfName(pair)
@@ -2771,6 +2896,8 @@ export function generateTradeHistory(pair, days = 15, internalAccounts = []) {
   const base = parts[0] || 'TOKEN'
   const quote = parts[1] || 'USDT'
   const FULL = 30
+  const requested = Number(days)
+  const n = [7, 15, 30].includes(requested) ? requested : FULL
   const all = []
   const sellUPer = mm.sellQty ? mm.sellU / mm.sellQty : 0
   const buyUPer = mm.buyQty ? mm.buyU / mm.buyQty : 0
@@ -2795,6 +2922,7 @@ export function generateTradeHistory(pair, days = 15, internalAccounts = []) {
     const lastPrice = i === FULL - 1
       ? mm.lastPrice
       : fmtDeskPrice(mm.lastPrice * (0.955 + t * 0.045 + wave * 0.35 + ((sellQty - buyQty) / Math.max(mm.sellQty, 1)) * 0.008))
+    const dayPnl = calcMmTradingPnl(buyQty, sellQty, avgBuy, avgSell, lastPrice)
     all.push({
       date,
       dateKey,
@@ -2807,6 +2935,8 @@ export function generateTradeHistory(pair, days = 15, internalAccounts = []) {
       buyU,
       usdtNet,
       tokenDelta,
+      netQty: tokenDelta,
+      realizedU: dayPnl.realizedU,
       lastPrice
     })
   }
@@ -2831,6 +2961,27 @@ export function generateTradeHistory(pair, days = 15, internalAccounts = []) {
   const periodToken = Number((periodBuy - periodSell).toFixed(1))
   const periodUsdt = Number(rowsAsc.reduce((sum, row) => sum + row.usdtNet, 0).toFixed(1))
   const avgSpread = Number((rowsAsc.reduce((sum, row) => sum + row.spreadPct, 0) / Math.max(rowsAsc.length, 1)).toFixed(2))
+  const periodSellU = Number(rowsAsc.reduce((sum, row) => sum + row.sellU, 0).toFixed(1))
+  const periodBuyU = Number(rowsAsc.reduce((sum, row) => sum + row.buyU, 0).toFixed(1))
+  const sellNotional = rowsAsc.reduce((sum, row) => sum + row.sellQty * Number(row.avgSell), 0)
+  const buyNotional = rowsAsc.reduce((sum, row) => sum + row.buyQty * Number(row.avgBuy), 0)
+  const avgSell = periodSell ? fmtDeskPrice(sellNotional / periodSell) : last.avgSell
+  const avgBuy = periodBuy ? fmtDeskPrice(buyNotional / periodBuy) : last.avgBuy
+  const pnl = calcMmTradingPnl(periodBuy, periodSell, avgBuy, avgSell, last.lastPrice)
+  const users = desk.users || {}
+  const realUsers = Math.max(1, Number(users.realUsers) || 48)
+  const daySellUsers = Math.min(realUsers, Math.max(1, Math.round(realUsers * (0.54 + pairSeed * 0.02))))
+  const dayBuyUsers = Math.min(realUsers, Math.max(1, Math.round(realUsers * (0.49 + pairSeed * 0.015))))
+  const uniqScale = 1 + (n - 1) * 0.065
+  const sellScale = mm.sellQty ? periodSell / mm.sellQty : n
+  const buyScale = mm.buyQty ? periodBuy / mm.buyQty : n
+  const scaleQty = (value, scale) => Number((Number(value || 0) * scale).toFixed(1))
+  const retailBuy = scaleQty(users.retailBuy, sellScale)
+  const retailSell = scaleQty(users.retailSell, buyScale)
+  const smartBuy = scaleQty(users.smartBuy, sellScale)
+  const smartSell = scaleQty(users.smartSell, buyScale)
+  const realBuy = scaleQty(users.realBuy, sellScale)
+  const realSell = scaleQty(users.realSell, buyScale)
 
   return {
     range: n,
@@ -2840,9 +2991,30 @@ export function generateTradeHistory(pair, days = 15, internalAccounts = []) {
     kpis: {
       periodSell,
       periodBuy,
+      periodSellU,
+      periodBuyU,
       periodToken,
       periodUsdt,
       avgSpread,
+      matched: pnl.matched,
+      realizedU: pnl.realizedU,
+      floatU: pnl.floatU,
+      totalU: pnl.totalU,
+      avgSell,
+      avgBuy,
+      sellUsers: Math.max(1, Math.round(daySellUsers * uniqScale)),
+      buyUsers: Math.max(1, Math.round(dayBuyUsers * uniqScale)),
+      sellFills: daySellUsers * (5 + (pairSeed % 4)) * n,
+      buyFills: dayBuyUsers * (4 + ((pairSeed + 1) % 4)) * n,
+      retailBuy,
+      retailSell,
+      retailNet: Number((retailBuy - retailSell).toFixed(1)),
+      smartBuy,
+      smartSell,
+      smartNet: Number((smartBuy - smartSell).toFixed(1)),
+      realBuy,
+      realSell,
+      realNet: Number((realBuy - realSell).toFixed(1)),
       endSell: last.sellQty,
       endBuy: last.buyQty,
       endSpread: last.spreadPct,
@@ -2855,19 +3027,16 @@ export function generateTradeHistory(pair, days = 15, internalAccounts = []) {
     status: [
       {
         color: periodUsdt >= 0 ? 'green' : 'yellow',
-        text: `区间 USDT 净增加 ${signedPlain(periodUsdt)}万 · 期末日 ${signedPlain(last.usdtNet)}`
+        text: `USDT 净增加 ${signedPlain(periodUsdt)}万 · 今日 ${signedPlain(last.usdtNet)}万`
       },
       {
         color: 'green',
-        text: `区间卖出 ${fmtQtyPlain(periodSell)} / 买入 ${fmtQtyPlain(periodBuy)}万${base} · 代币净 ${signedPlain(periodToken)}`
-      },
-      {
-        color: last.spreadPct >= 0 ? 'green' : 'yellow',
-        text: `期末日均卖比均买高 ${last.spreadPct}% · 区间日均 ${avgSpread}%`
+        text: `卖出 ${fmtQtyPlain(periodSell)} / 买入 ${fmtQtyPlain(periodBuy)}万${base} · 代币净 ${signedPlain(periodToken)}`
       },
       {
         color: last.lastPrice >= last.invCost ? 'green' : 'yellow',
-        text: `期末现价 ${last.lastPrice} · 库存成本 ${last.invCost}`
+        break: true,
+        text: `现价 ${last.lastPrice} · 库存成本 ${last.invCost}`
       }
     ],
     series: {
@@ -2970,20 +3139,32 @@ export function generateUsersToday(pair, internalAccounts, dateKey = '') {
       { color: 'yellow', text: '不含做市 / 金库 / 项目方等内部 UID' }
     ],
     history: { hours, buyHour, sellHour, userHour, newHour: newHourScaled },
+    priceFlow: generateUserPriceFlow({
+      lastPrice: mm.lastPrice,
+      avgBuy,
+      avgSell,
+      realBuy: u.realBuy,
+      realSell: u.realSell,
+      pairSeed
+    }),
     tags,
     traders
   }
   return applyUsersDay(payload, pair, internalAccounts, dateKey)
 }
 
-export function generateUsersHistory(pair, days = 15, internalAccounts = []) {
-  const n = [7, 15, 30].includes(Number(days)) ? Number(days) : 15
+export function generateUsersHistory(pair, days, internalAccounts = []) {
   const today = generateUsersToday(pair, internalAccounts)
+  const chips = generateUserChips(pair, 30, internalAccounts)
   const u = today.kpis
   const pairSeed = pairSeedOfName(pair)
+  const holdNow = Number(chips.kpis?.totalAmount || 0)
+  const costNow = Number(chips.kpis?.avgCost || u.lastPrice || 0)
   const parts = String(pair || '').split('/')
   const base = parts[0] || 'TOKEN'
   const FULL = 30
+  const requested = Number(days)
+  const n = [7, 15, 30].includes(requested) ? requested : FULL
   const all = []
 
   for (let i = 0; i < FULL; i++) {
@@ -3003,6 +3184,14 @@ export function generateUsersHistory(pair, days = 15, internalAccounts = []) {
     const realBuy = Number((u.realBuy * (i === FULL - 1 ? 1 : (0.7 + ((i * 4 + pairSeed) % 9) * 0.05))).toFixed(1))
     const realSell = Number((u.realSell * (i === FULL - 1 ? 1 : (0.68 + ((i * 6 + pairSeed * 2) % 9) * 0.05))).toFixed(1))
     const realNet = Number((realBuy - realSell).toFixed(1))
+    const avgBuy = i === FULL - 1
+      ? u.avgBuy
+      : fmtDeskPrice(u.avgBuy * (1 + wave * 0.01 + jitter * 0.4))
+    const avgSell = i === FULL - 1
+      ? u.avgSell
+      : fmtDeskPrice(u.avgSell * (1 - wave * 0.008 + jitter * 0.3))
+    const realBuyU = Number((realBuy * Number(avgBuy)).toFixed(1))
+    const realSellU = Number((realSell * Number(avgSell)).toFixed(1))
     const tradedPct = holders ? Number((realUsers / holders * 100).toFixed(1)) : 0
     const avgTicket = Number(((realBuy + realSell) / Math.max(realUsers, 1)).toFixed(2))
     const returning = Math.max(0, realUsers - newTraders)
@@ -3016,9 +3205,24 @@ export function generateUsersHistory(pair, days = 15, internalAccounts = []) {
       realBuy,
       realSell,
       realNet,
+      realBuyU,
+      realSellU,
+      avgBuy,
+      avgSell,
       tradedPct,
       avgTicket
     })
+  }
+
+  let holdQty = holdNow
+  for (let i = FULL - 1; i >= 0; i--) {
+    const wave = Math.sin((i + pairSeed) / 5) * 0.008
+    const jitter = ((i * 3 + pairSeed) % 7 - 3) * 0.0015
+    all[i].holdQty = Number(Math.max(0, holdQty).toFixed(1))
+    all[i].avgCost = i === FULL - 1
+      ? fmtDeskPrice(costNow)
+      : fmtDeskPrice(costNow * (1 + wave + jitter))
+    if (i > 0) holdQty = Number((holdQty - Number(all[i].realNet || 0)).toFixed(1))
   }
 
   const rowsAsc = all.slice(FULL - n)
@@ -3028,6 +3232,12 @@ export function generateUsersHistory(pair, days = 15, internalAccounts = []) {
   const periodBuy = Number(rowsAsc.reduce((sum, row) => sum + row.realBuy, 0).toFixed(1))
   const periodSell = Number(rowsAsc.reduce((sum, row) => sum + row.realSell, 0).toFixed(1))
   const periodNet = Number((periodBuy - periodSell).toFixed(1))
+  const periodBuyU = Number(rowsAsc.reduce((sum, row) => sum + row.realBuyU, 0).toFixed(1))
+  const periodSellU = Number(rowsAsc.reduce((sum, row) => sum + row.realSellU, 0).toFixed(1))
+  const buyNotional = rowsAsc.reduce((sum, row) => sum + row.realBuy * Number(row.avgBuy), 0)
+  const sellNotional = rowsAsc.reduce((sum, row) => sum + row.realSell * Number(row.avgSell), 0)
+  const avgBuy = periodBuy ? fmtDeskPrice(buyNotional / periodBuy) : last.avgBuy
+  const avgSell = periodSell ? fmtDeskPrice(sellNotional / periodSell) : last.avgSell
   const periodNew = rowsAsc.reduce((sum, row) => sum + row.newTraders, 0)
   const avgUsers = Math.round(rowsAsc.reduce((sum, row) => sum + row.realUsers, 0) / Math.max(rowsAsc.length, 1))
   const maxUsers = Math.max(...rowsAsc.map((row) => row.realUsers))
@@ -3050,23 +3260,27 @@ export function generateUsersHistory(pair, days = 15, internalAccounts = []) {
       periodBuy,
       periodSell,
       periodNet,
+      periodBuyU,
+      periodSellU,
+      avgBuy,
+      avgSell,
       endAvgTicket: last.avgTicket,
       endNet: last.realNet
     },
     status: [
       {
         color: 'green',
-        text: `交易用户 ${first.realUsers} → ${last.realUsers} 人 · 区间均 ${avgUsers} · 高低 ${minUsers}–${maxUsers}`
+        text: `交易用户 ${first.realUsers} → ${last.realUsers} 人 · 均 ${avgUsers} · 高低 ${minUsers}–${maxUsers}`
       },
       {
         color: periodNet >= 0 ? 'green' : 'yellow',
-        text: `区间买 ${fmtQtyPlain(periodBuy)} / 卖 ${fmtQtyPlain(periodSell)}万 · 净 ${signedPlain(periodNet)}万${base}`
+        text: `买 ${fmtQtyPlain(periodBuy)} / 卖 ${fmtQtyPlain(periodSell)}万 · 净 ${signedPlain(periodNet)}万${base}`
       },
       {
         color: 'green',
-        text: `区间新增 ${periodNew} 人 · 期末持仓 ${last.holders} · 当日成交占持仓 ${last.tradedPct}%`
+        text: `新增 ${periodNew} 人 · 期末持仓 ${last.holders} · 当日成交占持仓 ${last.tradedPct}%`
       },
-      { color: 'yellow', text: '不含做市 / 金库 / 项目方等内部 UID · 期末点与「真实用户今日交易情况」对齐' }
+      { color: 'yellow', text: '不含做市 / 金库 / 项目方等内部 UID' }
     ],
     series: {
       dates: rowsAsc.map((row) => row.date),
@@ -3084,8 +3298,7 @@ export function generateUsersHistory(pair, days = 15, internalAccounts = []) {
   }
 }
 
-export function generateUsersAssetsHistory(pair, days = 15, internalAccounts = [], sleepIdleDays = 30) {
-  const n = [7, 15, 30].includes(Number(days)) ? Number(days) : 15
+export function generateUsersAssetsHistory(pair, days, internalAccounts = [], sleepIdleDays = 30) {
   const chips = generateUserChips(pair, sleepIdleDays, internalAccounts)
   const desk = generateDashboardDesk(pair, internalAccounts)
   const d = getPairData(pair)
@@ -3100,6 +3313,8 @@ export function generateUsersAssetsHistory(pair, days = 15, internalAccounts = [
   const userTokenU = toU(userToken)
   const holders = desk.users.holders
   const FULL = 30
+  const requested = Number(days)
+  const n = [7, 15, 30].includes(requested) ? requested : FULL
   const all = []
 
   for (let i = 0; i < FULL; i++) {
@@ -3173,7 +3388,7 @@ export function generateUsersAssetsHistory(pair, days = 15, internalAccounts = [
         color: 'green',
         text: `持仓用户 ${first.holders} → ${lastRow.holders} 人 · 期末 USDT 占资产 ${lastRow.cashPct}%`
       },
-      { color: 'yellow', text: '不含做市 / 金库 / 项目方等内部 UID · 期末点与「真实用户今日资产情况」对齐' }
+      { color: 'yellow', text: '不含做市 / 金库 / 项目方等内部 UID' }
     ],
     series: {
       dates: rowsAsc.map((row) => row.date),
@@ -3277,6 +3492,17 @@ function applyUsersDay(payload, pair, internalAccounts, dateKey) {
   kpis.sellUsers = Math.min(day.realUsers, Math.max(1, Math.round((kpis.sellUsers || 0) * userScale)))
   kpis.realBuyU = Number(((kpis.realBuyU || 0) * buyScale).toFixed(1))
   kpis.realSellU = Number(((kpis.realSellU || 0) * sellScale).toFixed(1))
+  kpis.avgBuy = day.avgBuy
+  kpis.avgSell = day.avgSell
+
+  payload.priceFlow = generateUserPriceFlow({
+    lastPrice: kpis.lastPrice || day.avgBuy,
+    avgBuy: day.avgBuy,
+    avgSell: day.avgSell,
+    realBuy: day.realBuy,
+    realSell: day.realSell,
+    pairSeed: pairSeedOfName(pair) + Number(key.slice(-2) || 0)
+  })
 
   payload.history.buyHour = scaleHourSeries(payload.history.buyHour, day.realBuy)
   payload.history.sellHour = scaleHourSeries(payload.history.sellHour, day.realSell)
@@ -3466,16 +3692,16 @@ export function generateFloatChips(pair, sleepIdleDays = 30, kind = 'real', inte
     ],
     buckets: isReal
       ? [
-          { name: '所内可卖', amount: snap.exchTotal, pct: snap.exchPct, to: '/chips/user', note: '所内活跃 + 所内沉睡，不含做市账户', tag: 'user', tagLabel: '所内' },
+          { name: '所内可卖', amount: snap.exchTotal, pct: snap.exchPct, to: '/desk/users/chips', note: '所内活跃 + 所内沉睡，不含做市账户', tag: 'user', tagLabel: '所内' },
           { name: '链上可动用', amount: snap.onchainTotal, pct: snap.onchainPct, to: '/chips/external', note: '链上活跃 + 链上沉睡', tag: 'robot', tagLabel: '链上' },
           { name: '活跃浮动', amount: snap.activeFloat, pct: snap.activeOfFloat, to: '/chips/active', note: '所内近期成交 + 链上近期转账', tag: 'success', tagLabel: '活跃' },
-          { name: '沉睡合计', amount: snap.sleepTotal, pct: snap.sleepOfFloat, to: '/chips/user', note: `所内沉睡 ${snap.sleepExchange}万 · 链上沉睡 ${snap.sleepOnchain}万`, tag: 'warning', tagLabel: '沉睡' }
+          { name: '沉睡合计', amount: snap.sleepTotal, pct: snap.sleepOfFloat, to: '/desk/users/chips', note: `所内沉睡 ${snap.sleepExchange}万 · 链上沉睡 ${snap.sleepOnchain}万`, tag: 'warning', tagLabel: '沉睡' }
         ]
       : [
-          { name: '所内活跃', amount: snap.activeExchange, pct: snap.activeOfExch, to: '/chips/user', note: `≥${snap.sleepIdleDays}天内有成交的所内持仓`, tag: 'user', tagLabel: '所内' },
+          { name: '所内活跃', amount: snap.activeExchange, pct: snap.activeOfExch, to: '/desk/users/chips', note: `≥${snap.sleepIdleDays}天内有成交的所内持仓`, tag: 'user', tagLabel: '所内' },
           { name: '链上活跃', amount: snap.activeOnchain, pct: snap.activeOfOnchain, to: '/chips/external', note: `≥${snap.sleepIdleDays}天内有转入转出`, tag: 'robot', tagLabel: '链上' },
           { name: '真实浮动', amount: snap.floatNum, pct: 100, to: '/chips/float', note: snap.floatSub, tag: 'success', tagLabel: '口径' },
-          { name: '沉睡对照', amount: snap.sleepTotal, pct: snap.sleepOfFloat, to: '/chips/user', note: '真实浮动 − 活跃浮动', tag: 'warning', tagLabel: '沉睡' }
+          { name: '沉睡对照', amount: snap.sleepTotal, pct: snap.sleepOfFloat, to: '/desk/users/chips', note: '真实浮动 − 活跃浮动', tag: 'warning', tagLabel: '沉睡' }
         ],
     history: {
       dates,
@@ -3549,9 +3775,9 @@ export function generateCircSupply(pair, kind = 'exchange', sleepIdleDays = 30, 
 
   const buckets = isExch
     ? [
-        { name: '所内活跃', amount: snap.activeExchange, pct: pct(snap.activeExchange, total), to: '/chips/user', note: `近${idleDays}天有成交的用户持仓`, tag: 'success', tagLabel: '活跃' },
-        { name: '所内沉睡', amount: snap.sleepExchange, pct: pct(snap.sleepExchange, total), to: '/chips/user', note: `≥${idleDays}天无成交 · 点进用户筹码`, tag: 'warning', tagLabel: '沉睡' },
-        { name: '做市账户', amount: snap.mmQty, pct: snap.mmOfExch, to: '/desk/mm', note: '做市账上的代币 · 一部分可能是从用户借入的虚增', tag: 'robot', tagLabel: '做市' }
+        { name: '所内活跃', amount: snap.activeExchange, pct: pct(snap.activeExchange, total), to: '/desk/users', note: `近${idleDays}天有成交的用户持仓`, tag: 'success', tagLabel: '活跃' },
+        { name: '所内沉睡', amount: snap.sleepExchange, pct: pct(snap.sleepExchange, total), to: '/desk/users/chips', note: `≥${idleDays}天无成交 · 点进筹码分布`, tag: 'warning', tagLabel: '沉睡' },
+        { name: '做市账户', amount: snap.mmQty, pct: snap.mmOfExch, to: '/ops/dump', note: '做市账上的代币 · 一部分可能是从用户借入的虚增', tag: 'robot', tagLabel: '做市' }
       ]
     : [
         { name: '可充回', amount: snap.activeOnchain, pct: pct(snap.activeOnchain, total), to: '/chips/external', note: `近${idleDays}天有转账 · 随时可能充进所内`, tag: 'success', tagLabel: '可充回' },
@@ -3602,7 +3828,7 @@ export function generateCircSupply(pair, kind = 'exchange', sleepIdleDays = 30, 
         pct: pct(Math.max(0, share), total),
         last: '今日',
         note: item.remark || '做市账户',
-        to: '/desk/mm'
+        to: '/ops/dump'
       })
     })
     if (!mmAccounts.length && snap.mmQty > 0) {
@@ -3614,7 +3840,7 @@ export function generateCircSupply(pair, kind = 'exchange', sleepIdleDays = 30, 
         pct: snap.mmOfExch,
         last: '今日',
         note: '未配置做市 UID · 按做市库存合计',
-        to: '/desk/mm'
+        to: '/ops/dump'
       })
     }
   } else {
@@ -3650,10 +3876,10 @@ export function generateCircSupply(pair, kind = 'exchange', sleepIdleDays = 30, 
   const topUser = rows.find((row) => row.kind !== '做市') || rows[0]
   const events = isExch
     ? [
-        { time: '10:42', text: `UID ${topUser?.id || '--'} 买入 ${fmtQtyPlain(12 + pairSeed)}万 · 你在卖出`, tag: 'success', to: topUser?.to || '/chips/user' },
-        { time: '10:18', text: `做市库存变动 ${fmtQtyPlain(snap.mmQty)}万 · 点进做市账户`, tag: 'robot', to: '/desk/mm' },
-        { time: '09:51', text: `沉睡仓 ${fmtQtyPlain(8 + pairSeed * 2)}万转活跃`, tag: 'warning', to: '/chips/user' },
-        { time: '09:12', text: `大额挂单进入买一，所内活跃抬升`, tag: 'user', to: '/detail-orders' }
+        { time: '10:42', text: `UID ${topUser?.id || '--'} 买入 ${fmtQtyPlain(12 + pairSeed)}万 · 你在卖出`, tag: 'success', to: topUser?.to || '/desk/users' },
+        { time: '10:18', text: `做市库存变动 ${fmtQtyPlain(snap.mmQty)}万 · 点进做市账户`, tag: 'robot', to: '/ops/dump' },
+        { time: '09:51', text: `沉睡仓 ${fmtQtyPlain(8 + pairSeed * 2)}万转活跃`, tag: 'warning', to: '/desk/users' },
+        { time: '09:12', text: `大额挂单进入买一，所内活跃抬升`, tag: 'user', to: '/orderbook' }
       ]
     : [
         { time: '10:36', text: `${topUser?.id || '0x'} 转入 ${fmtQtyPlain(18 + pairSeed * 2)}万`, tag: 'success', to: topUser?.to || '/chips/external' },
@@ -3839,7 +4065,7 @@ export function generateObiDetail(pair, depthLevels = 10, obiWarn = 0.4) {
     { scene: '买盘厚 + 偏离不高', meaning: '散户还愿意追，下方也有买单', action: '可拉，卖出：把货卖给追涨的人' },
     { scene: '买盘厚 + 偏离已经很高', meaning: '人人有利润，但买单还在', action: '停拉，先卖出兑现；下一步再砸盘买入' },
     { scene: '卖盘厚 + 偏离很高', meaning: '获利盘挂着等你来接', action: '别拉。拉等于高位买入，等他们砍' },
-    { scene: '卖盘厚 + 偏离为负', meaning: '套牢盘在出，你有货可买', action: '可砸，买入：用做市账户余额买回刚才卖掉的货' }
+    { scene: '卖盘厚 + 偏离为负', meaning: '套牢盘在出，有货可买', action: '可砸，买入：用做市账户余额买回刚才卖掉的货' }
   ]
 
   return {
@@ -4011,7 +4237,7 @@ export function generateExchangeUser(pair, uid, scope = 'pair') {
   if (extra.key !== primary.key && seed % 3 !== 0) {
     tags.push({ label: extra.label, className: extra.className, to: `/user-profile/${extra.key}` })
   }
-  if (seed % 5 === 0) tags.push({ label: '大户', className: 'robot', to: '/chips/user' })
+  if (seed % 5 === 0) tags.push({ label: '大户', className: 'robot', to: '/desk/users' })
   if (seed % 7 === 0) tags.push({ label: '高频', className: 'warning' })
 
   const pairs = all ? PAIRS : [pair]
@@ -4062,28 +4288,16 @@ export function generateExchangeUser(pair, uid, scope = 'pair') {
   const tradeDays = 6 + (seed % 22) + (all ? 4 : 0)
   const avgTicket = Number(((todayBuy + todaySell) / Math.max(4 + (seed % 8), 1)).toFixed(2))
   const openOrders = 1 + (seed % 7)
-  const deposit30 = Number(((all ? 42 : 16) + (seed % 24)).toFixed(1))
-  const withdraw30 = Number(((all ? 28 : 9) + (seed % 18)).toFixed(1))
-
-  const buyBias = seed % 5 === 0 ? '偏卖' : seed % 5 <= 2 ? '偏买' : '均衡'
-  const hoursPeak = ['09:00–11:30', '14:00–16:00', '20:00–23:00'][seed % 3]
-  const chase = primary.key === 'retail' || primary.key === 'kol'
-    ? '追涨杀跌'
-    : primary.key === 'smart'
-      ? '逢低加、不追高'
-      : primary.key === 'prog'
-        ? '规则进出'
-        : '活动驱动'
   const ticketLabel = avgTicket >= 8 ? '大单' : avgTicket >= 3 ? '中单' : '小单'
   const holdLabel = avgHoldHours < 4 ? '超短' : avgHoldHours < 18 ? '日内' : avgHoldHours < 48 ? '波段' : '长持'
+  const freq = trades30 / Math.max(tradeDays, 1)
+  const freqLabel = freq >= 4 ? '高频' : freq >= 2 ? '中频' : '低频'
 
   const habits = [
-    { label: '买卖偏好', value: buyBias, note: `近30日净${todayNet >= 0 ? '买入' : '卖出'} ${Math.abs(todayNet)}` },
-    { label: '活跃时段', value: hoursPeak, note: '成交最密的窗口' },
     { label: '平均持仓', value: `${Math.max(0.4, avgHoldHours)}小时`, note: holdLabel },
     { label: '挂撤比', value: `${cancelRatio}%`, note: '撤单 / 挂单' },
     { label: '单笔规模', value: ticketLabel, note: `人均约 ${avgTicket}${qtyUnit}` },
-    { label: '进出风格', value: chase, note: primary.label }
+    { label: '成交频率', value: freqLabel, note: `日均 ${freq.toFixed(1)} 笔` }
   ]
 
   const end = new Date('2026-08-28T00:00:00')
@@ -4122,14 +4336,11 @@ export function generateExchangeUser(pair, uid, scope = 'pair') {
       row.pos.push(Number((runningPos * share).toFixed(1)))
     })
   }
-
-  const hours = hours24()
-  const hourTrades = hours.map((_, index) => {
-    const peak = seed % 3 === 0 ? 10 : seed % 3 === 1 ? 15 : 21
-    const dist = Math.min(Math.abs(index - peak), 24 - Math.abs(index - peak))
-    const wave = Math.max(0.15, 1.15 - dist * 0.12)
-    return Math.max(0, Math.round((1.2 + (seed % 5) * 0.4) * wave + ((index * 3 + seed) % 3 === 0 ? 1 : 0)))
-  })
+  const buy30 = Number(buySeries.reduce((sum, value) => sum + value, 0).toFixed(1))
+  const sell30 = Number(sellSeries.reduce((sum, value) => sum + value, 0).toFixed(1))
+  const lifeMul = Number((2.1 + (seed % 18) / 10 + (80 + (seed % 520)) / 240).toFixed(2))
+  const totalBuy = Number((buy30 * lifeMul).toFixed(1))
+  const totalSell = Number((sell30 * lifeMul).toFixed(1))
 
   const sides = [
     { side: '买入', tag: 'user' },
@@ -4167,6 +4378,47 @@ export function generateExchangeUser(pair, uid, scope = 'pair') {
   const regions = ['新加坡', '香港', '韩国', '不明']
   const lastFill = fills[0]?.time || '今日'
 
+  const transferStatuses = [
+    { status: '红色', statusTag: 'alert' },
+    { status: '监控中', statusTag: 'warning' },
+    { status: '已处理', statusTag: 'success' }
+  ]
+  const allTransfers = []
+  for (let i = 0; i < PAIRS.length * 6; i++) {
+    const action = i % 3 === 2 ? '提现' : '充值'
+    const meta = ACTION_META[action]
+    const p = PAIRS[i % PAIRS.length]
+    const t = p.split('/')[0]
+    const px = assets.find((row) => row.pair === p)?.price
+      || Number((0.86 + pairSeedOfName(p) * 0.04 + (seed % 12) / 400).toFixed(4))
+    const day = new Date(end)
+    day.setDate(end.getDate() - (i % 18))
+    const hh = String(9 + (i * 2 + seed) % 12).padStart(2, '0')
+    const min = String((i * 17 + seed) % 60).padStart(2, '0')
+    const qty = Number((1.2 + ((i * 11 + seed) % 36) / 4 + 1.4 + (i === 0 ? 8 : 0)).toFixed(1))
+    const st = qty >= 12 ? transferStatuses[0] : transferStatuses[(i + seed) % 3]
+    allTransfers.push({
+      time: `${String(day.getMonth() + 1).padStart(2, '0')}/${String(day.getDate()).padStart(2, '0')} ${hh}:${min}`,
+      pair: p,
+      token: t,
+      action,
+      actionClass: meta.className,
+      amount: qty,
+      amountU: Number((qty * px).toFixed(1)),
+      chain: TRANSFER_CHAINS[(i + seed) % TRANSFER_CHAINS.length],
+      address: makeWhaleAddress(i + 70 + seed, pairSeed),
+      status: st.status,
+      statusTag: st.statusTag,
+      note: meta.note[(i + seed) % meta.note.length]
+    })
+  }
+  allTransfers.sort((a, b) => (a.time < b.time ? 1 : a.time > b.time ? -1 : 0))
+  const transfers = all
+    ? allTransfers
+    : allTransfers.filter((row) => row.pair === pair || row.token === token)
+  const deposit30 = Number(transfers.filter((row) => row.action === '充值').reduce((sum, row) => sum + row.amountU, 0).toFixed(1))
+  const withdraw30 = Number(transfers.filter((row) => row.action === '提现').reduce((sum, row) => sum + row.amountU, 0).toFixed(1))
+
   return {
     uid: fullUid,
     pair,
@@ -4197,6 +4449,8 @@ export function generateExchangeUser(pair, uid, scope = 'pair') {
       todayBuy,
       todaySell,
       todayNet,
+      totalBuy,
+      totalSell,
       trades30,
       winRate,
       profitRatio,
@@ -4210,7 +4464,7 @@ export function generateExchangeUser(pair, uid, scope = 'pair') {
     },
     status: [
       { color: kyc === '已认证' ? 'green' : 'yellow', text: `${kyc} · ${vip} · 注册 ${80 + (seed % 520)} 天` },
-      { color: todayNet >= 0 ? 'green' : 'yellow', text: `今日净${todayNet >= 0 ? '买' : '卖'} ${signedPlain(todayNet)}${qtyUnit} · ${todayNet >= 0 ? '你在卖出' : '你在买入'}` },
+      { color: todayNet >= 0 ? 'green' : 'yellow', text: `今日净${todayNet >= 0 ? '买' : '卖'} ${signedPlain(todayNet)}${qtyUnit}` },
       { color: pnlU >= 0 ? 'green' : 'red', text: `持仓浮盈亏 ${signedPlain(pnlU)}万USDT · ${pnlPct >= 0 ? '+' : ''}${pnlPct}%` },
       { color: 'yellow', text: `近30日成交 ${trades30} 笔 · ${tradeDays} 个交易日 · 挂撤 ${cancelRatio}%` }
     ],
@@ -4224,8 +4478,8 @@ export function generateExchangeUser(pair, uid, scope = 'pair') {
       pnl: pnlSeries,
       tokens: tokenSeries
     },
-    hours: { labels: hours, trades: hourTrades },
-    fills
+    fills,
+    transfers
   }
 }
 
@@ -4278,15 +4532,16 @@ export function generateAlertSummary(pair, opts = {}) {
     '/risk': '做市',
     '/robots': '做市',
     '/orderbook/obi': '盘口',
-    '/ops/stance': '厚度与偏离',
+    '/ops/stance': '价格台阶',
     '/orderbook': '盘口',
     '/whales/exchange': '充提',
-    '/orderbook/blocks': '盘口大单',
+    '/orderbook/blocks': '盘口',
     '/whales/onchain': '链上仓库',
-    '/position/cost-dev': '厚度与偏离',
-    '/position': '厚度与偏离',
+    '/position/cost-dev': '价格台阶',
+    '/position': '价格台阶',
     '/trade-risk': '警报',
-    '/ops/absorb': '真实用户资产',
+    '/ops/absorb': '真实用户',
+    '/desk/users': '真实用户',
     '/ops/dump': '买卖',
     '/ops/ladder': '价格台阶',
     '/user-profile/smart': '聪明钱',
@@ -4376,7 +4631,7 @@ export function generateAlertSummary(pair, opts = {}) {
       source: '做市',
       text: `做市库存 ${robot.kpis.robotInv}% · ${robot.kpis.bandStatus}`,
       status: '监控中',
-      to: '/desk/mm'
+      to: '/ops/dump'
     })
   }
 
@@ -4388,7 +4643,7 @@ export function generateAlertSummary(pair, opts = {}) {
       source: '筹码',
       text: `价格偏离成本 ${cost.kpis.devLabel}% · ${cost.kpis.stance}`,
       status: '监控中',
-      to: '/ops/stance'
+      to: '/ops/ladder'
     })
   }
 
@@ -4400,7 +4655,7 @@ export function generateAlertSummary(pair, opts = {}) {
       source: '盘口',
       text: `近端厚度 ${d.obi} · ${d.obiSub === '买盘偏厚' ? '砸价会打到买单' : '拉价会吃到卖单'}`,
       status: '监控中',
-      to: '/ops/stance'
+      to: '/ops/ladder'
     })
   }
 
@@ -4445,7 +4700,7 @@ export function generateAlertSummary(pair, opts = {}) {
       source: '自己的账',
       text: `做市账户余额 ${signedPlain(ops.dump.ownUsdt)}万USDT · 真实 ${signedPlain(ops.dump.cashTrueU)} + 借入 ${fmtQtyPlain(ops.dump.cashBorrowedU)} · 买入资金偏薄`,
       status: '未处理',
-      to: '/desk/mm'
+      to: '/ops/dump'
     })
   }
 
@@ -4659,7 +4914,6 @@ export function generateOpsDesk(pair, sleepIdleDays = 30, internalAccounts, date
     return Number((ask10U * 1.45).toFixed(1))
   }
 
-  const idleCashU = Number(Math.max(0, userCashU - bid5U).toFixed(1))
   const steps = [20, 10, 5, 0, -5, -10, -20]
   const ladder = steps.map((pct) => {
     const price = Number((last * (1 + pct / 100)).toFixed(px.digits))
@@ -4675,12 +4929,9 @@ export function generateOpsDesk(pair, sleepIdleDays = 30, internalAccounts, date
     const askU = askUAt(pct)
     const askQty = price ? Number((askU / price).toFixed(1)) : 0
     const bookQty = Number((wallQty + askQty).toFixed(1))
-    const toQty = (u) => (price ? Number((u / price).toFixed(1)) : 0)
 
     const newlyAmt = sumAmt(rows.filter((row) => row.cost < last && row.cost >= price))
 
-    let idleBuyU = 0
-    let freshBuyU = 0
     let wallBuyQty = 0
     let chipName = '浮盈'
     let chipAmt = profitAmt
@@ -4688,30 +4939,21 @@ export function generateOpsDesk(pair, sleepIdleDays = 30, internalAccounts, date
     let chipUsers = profitRows.length
 
     if (side === 'down') {
-      const dipRate = pct === -5 ? 0.10 : pct === -10 ? 0.14 : 0.18
-      idleBuyU = Number((idleCashU * dipRate).toFixed(1))
       wallBuyQty = wallQty
       chipName = '被套'
       chipAmt = lossAmt
       chipPct = lossPct
       chipUsers = lossRows.length
-    } else {
-      const chaseRate = pct === 0 ? 0.04 : pct === 5 ? 0.08 : pct === 10 ? 0.12 : 0.16
-      idleBuyU = Number((idleCashU * chaseRate).toFixed(1))
-      freshBuyU = Number((newMoneyU * (pct === 0 ? 0.02 : 0.04)).toFixed(1))
-      wallBuyQty = Number((wallQty * (pct === 0 ? 1 : 0.22)).toFixed(1))
+    } else if (side === 'spot') {
+      wallBuyQty = wallQty
     }
 
     const { expectedSell, sellBands } = buildLadderSellBands(rows, price, userToken, (row) => (
       ladderRowSellRate(row, price)
     ))
 
-    const idleBuyQty = toQty(idleBuyU)
-    const freshBuyQty = toQty(freshBuyU)
     const buyParts = [
-      { key: 'wall', kind: 'wall', label: '挂单买墙', buyAmt: wallBuyQty },
-      { key: 'idle', kind: 'idle', label: side === 'down' ? '闲置 USDT 抄底' : '闲置 USDT 追涨', buyAmt: idleBuyQty },
-      { key: 'fresh', kind: 'fresh', label: '新进场 USDT', buyAmt: freshBuyQty }
+      { key: 'wall', kind: 'wall', label: '已挂单买墙', buyAmt: wallBuyQty }
     ]
     const expectedBuy = Number(buyParts.reduce((sum, part) => sum + Number(part.buyAmt || 0), 0).toFixed(1))
     const buyBands = buyParts
@@ -4735,8 +4977,10 @@ export function generateOpsDesk(pair, sleepIdleDays = 30, internalAccounts, date
         ? `到这一档，浮盈按盈利率兑现：浮盈5%约卖10%仓，10%约卖20%，30%约卖30%。本档预估卖出 ${fmtQtyPlain(expectedSell)}万。`
         : `到现价，浮盈按盈利率兑现、浮亏按亏损率砍仓。浮盈/浮亏5%约卖10%仓，10%约卖20%，30%约卖30%。本档预估卖出 ${fmtQtyPlain(expectedSell)}万。`
     const whyBuy = side === 'down'
-      ? `该档挂单买墙会成交，再加上闲置 USDT 抄底。本档预估买入 ${fmtQtyPlain(expectedBuy)}万。`
-      : `挂单买墙在现价下方，跟不上。买主要来自闲置 USDT 追涨。本档预估买入 ${fmtQtyPlain(expectedBuy)}万。`
+      ? `价格砸到这一档，该档及以下真实用户买单会成交。不计未挂单的闲置资金。本档预估买入 ${fmtQtyPlain(expectedBuy)}万。`
+      : side === 'up'
+        ? `买墙挂在现价下方，跟不上。未挂单资金不算。本档预估买入 ${fmtQtyPlain(expectedBuy)}万。`
+        : `现价附近真实用户买单。不计未挂单的闲置资金。本档预估买入 ${fmtQtyPlain(expectedBuy)}万。`
     let play = '看'
     let playWhy = ''
     if (side === 'up') {
@@ -4747,7 +4991,7 @@ export function generateOpsDesk(pair, sleepIdleDays = 30, internalAccounts, date
       playWhy = `买入：维持这一档要对手卖 ${fmtQtyPlain(expectedSell)}万（${fmtQtyPlain(expectedSellU)}万USDT），做市账户余额 ${signedPlain(ownUsdtNow)}万USDT，最多买回 ${fmtQtyPlain(youAbsorb)}万。`
     } else {
       play = netQty >= 0 ? '可卖出' : '可买入'
-      playWhy = `现价：预估卖出 ${fmtQtyPlain(expectedSell)}万 · 预估买入 ${fmtQtyPlain(expectedBuy)}万。盘面代币 ${fmtQtyPlain(userToken)}万。`
+      playWhy = `现价：预估卖出 ${fmtQtyPlain(expectedSell)}万 · 预估买入 ${fmtQtyPlain(expectedBuy)}万。用户持有流通代币 ${fmtQtyPlain(userToken)}万。`
     }
     const stance = play
     const playKind = (play === '可卖出' || play === '可买入') ? 'ok' : (play === '对手接不住' || play === '余额不够' || play === '自己USDT不够') ? 'no' : 'watch'
@@ -4767,7 +5011,8 @@ export function generateOpsDesk(pair, sleepIdleDays = 30, internalAccounts, date
       chipPct,
       users: chipUsers,
       newlyTrapped: newlyAmt,
-      surfaceToken: userToken,
+      surfaceToken: side === 'up' ? 0 : wallQty,
+      surfaceTokenU: side === 'up' ? 0 : Number((Number(wallU) || 0).toFixed(1)),
       bookQty,
       expectedSell,
       sellBands,
@@ -4790,6 +5035,34 @@ export function generateOpsDesk(pair, sleepIdleDays = 30, internalAccounts, date
       whyBuy
     }
   })
+
+  ladder.forEach((row) => {
+    if (row.pct === 0) {
+      row.bandQty = 0
+      row.bandU = 0
+      row.cumQty = 0
+      row.cumU = 0
+      row.bookSide = 'spot'
+      return
+    }
+    const cumU = row.pct > 0 ? askUAt(row.pct) : wallUAt(row.pct)
+    const pxn = Number(last * (1 + row.pct / 100))
+    row.cumU = Number(Number(cumU).toFixed(1))
+    row.cumQty = pxn ? Number((cumU / pxn).toFixed(1)) : 0
+    row.bookSide = row.pct > 0 ? 'ask' : 'bid'
+  })
+  const fillLadderBand = (list) => {
+    let prevQty = 0
+    let prevU = 0
+    for (const row of list) {
+      row.bandQty = Number(Math.max(0, row.cumQty - prevQty).toFixed(1))
+      row.bandU = Number(Math.max(0, row.cumU - prevU).toFixed(1))
+      prevQty = row.cumQty
+      prevU = row.cumU
+    }
+  }
+  fillLadderBand(ladder.filter((row) => row.pct < 0).sort((a, b) => b.pct - a.pct))
+  fillLadderBand(ladder.filter((row) => row.pct > 0).sort((a, b) => a.pct - b.pct))
 
   const net = Number(desk.users.realNet) || 0
   const dev = px.devPct
@@ -4834,7 +5107,7 @@ export function generateOpsDesk(pair, sleepIdleDays = 30, internalAccounts, date
   const payload = {
     formula: '',
     surfaceToken: userToken,
-    ladderBlurb: '每一档的预估卖出，是把价格维持在这一档时，各账户按自己的浮盈/浮亏卖出仓位加总。',
+    ladderBlurb: '现价到该档的真实挂单：往上是卖墙，往下是买墙。现价行为起点，挂单为 0。',
     ladderGloss: {
       upSell: '到了这个价格，浮盈账户按盈利率兑现一部分仓位。赚得越多，可能卖出的仓位比例越高。',
       upSellRates: [
@@ -4842,25 +5115,11 @@ export function generateOpsDesk(pair, sleepIdleDays = 30, internalAccounts, date
         { pnl: '10%', pct: 20 },
         { pnl: '30%', pct: 30 }
       ],
-      upBuy: '挂单买墙在现价下方，跟不上。买主要来自闲置 USDT 追涨。',
-      upBuyRates: [
-        { step: '现价', pct: 4 },
-        { step: '+5%', pct: 8 },
-        { step: '+10%', pct: 12 },
-        { step: '+20%', pct: 16 }
-      ],
       downSell: '到了这个价格，浮亏账户按亏损率砍掉一部分仓位。亏得越多，可能卖出的仓位比例越高。',
       downSellRates: [
         { pnl: '5%', pct: 10 },
         { pnl: '10%', pct: 20 },
         { pnl: '30%', pct: 30 }
-      ],
-      downBuy: '该档挂单买墙会成交，再加上闲置 USDT 抄底。',
-      downBuyRates: [
-        { step: '现价', pct: '—' },
-        { step: '-5%', pct: 10 },
-        { step: '-10%', pct: 14 },
-        { step: '-20%', pct: 18 }
       ]
     },
     stance: {
@@ -4906,6 +5165,7 @@ export function generateOpsDesk(pair, sleepIdleDays = 30, internalAccounts, date
       realBuy: desk.users.realBuy,
       realSell: desk.users.realSell,
       realNet: desk.users.realNet,
+      realUsers: users.realUsers,
       userToken,
       ownedAmt: dumpable,
       ownUsdt: ownUsdtNow,
@@ -4954,6 +5214,7 @@ export function generateOpsDesk(pair, sleepIdleDays = 30, internalAccounts, date
     },
     users,
     ladder,
+    mmToday,
     history: { dates, userHold, ownedHold, usdtIn, ownUsdt }
   }
   const lastPx = Number(payload.dump.lastPrice) || Number(payload.stance.lastPrice)

@@ -3,12 +3,12 @@
     <div v-if="data" class="page">
         <div class="card stance-card">
           <div class="card-header">
-            <span>🎯 今日判断</span>
+            <span>🎯 今日总览</span>
             <span class="badge">{{ ops.stance.action }}</span>
           </div>
           <div class="monitor-status">
             <div class="status-item">
-              <span class="status-dot" :class="ops.stance.actionColor"></span>
+              <span class="status-dot" :class="actionDot(ops.stance.action)"></span>
               现价 {{ ops.stance.lastPrice }}
             </div>
             <div class="status-item">
@@ -23,48 +23,34 @@
         </div>
 
       <div class="kpi-grid cockpit">
-        <div class="kpi-item" @click="$router.push('/desk/mm')">
+        <div class="kpi-item" @click="$router.push('/ops/dump')">
           <div class="label">做市账户余额</div>
           <div class="kpi-metrics">
-            <div class="value" :style="{ color: Number(ops.dump.ownUsdt) >= 0 ? '#4cd9a0' : '#ff5a7a' }">
-              {{ signedQty(ops.dump.ownUsdt) }}<span class="unit">万USDT</span>
+            <div class="value" style="color:#4cd9a0;">
+              {{ fmtQty(ops.dump.ownUsdt) }}<span class="unit">万USDT</span>
             </div>
           </div>
-          <div class="sub">真实 {{ signedQty(ops.dump.cashTrueU) }} · 借入 {{ fmtQty(ops.dump.cashBorrowedU) }}</div>
+          <div class="sub">自有 {{ fmtQty(ops.dump.cashTrueU) }} · 借入虚增 {{ fmtQty(ops.dump.cashBorrowedU) }}</div>
         </div>
-        <div class="kpi-item" @click="$router.push('/desk/mm')">
+        <div class="kpi-item" @click="$router.push('/ops/dump')">
           <div class="label">可周转库存</div>
           <div class="kpi-metrics">
             <div class="value" style="color:#a78bfa;">{{ fmtQty(ops.dump.dumpable) }}<span class="unit">万</span></div>
           </div>
           <div class="sub">自有 {{ fmtQty(ops.dump.tokenOwn) }} · 借入虚增 {{ fmtQty(ops.dump.tokenBorrowed) }}</div>
         </div>
-        <div class="kpi-item" @click="$router.push('/ops/absorb')">
+        <div class="kpi-item" @click="$router.push('/desk/users')">
           <div class="label">平台用户USDT</div>
           <div class="kpi-metrics">
             <div class="value" style="color:#4cd9a0;">{{ fmtQty(ops.absorb.userCashU) }}<span class="unit">万USDT</span></div>
           </div>
         </div>
-        <div class="kpi-item" @click="$router.push('/chips/user')">
+        <div class="kpi-item" @click="$router.push('/desk/users/chips')">
           <div class="label">平台用户代币</div>
           <div class="kpi-metrics">
             <div class="value" style="color:#ffb347;">{{ fmtQty(data.kpis.exchUser) }}<span class="unit">万</span></div>
             <div class="qty">活跃 {{ fmtQty(data.kpis.activeExchange) }} · 沉睡 {{ fmtQty(data.kpis.sleepExchange) }}</div>
           </div>
-        </div>
-        <div class="kpi-item" @click="$router.push('/ops/stance')">
-          <div class="label">现价下跌5% 用户买单数量</div>
-          <div class="kpi-metrics">
-            <div class="value" style="color:#6a9aff;">{{ fmtQty(ops.absorb.bid5Qty) }}<span class="unit">万</span></div>
-          </div>
-          <div class="sub">{{ fmtQty(ops.absorb.bid5U) }}<span class="unit">万USDT</span></div>
-        </div>
-        <div class="kpi-item" @click="$router.push('/ops/stance')">
-          <div class="label">现价上涨5% 用户卖单数量</div>
-          <div class="kpi-metrics">
-            <div class="value" style="color:#ff5a7a;">{{ fmtQty(ops.absorb.ask5Qty) }}<span class="unit">万</span></div>
-          </div>
-          <div class="sub">{{ fmtQty(ops.absorb.ask5U) }}<span class="unit">万USDT</span></div>
         </div>
       </div>
 
@@ -81,13 +67,37 @@
             <div class="trade-legs">
               <div class="trade-leg is-sell">
                 <div class="mini-label">卖出</div>
-                <div class="mini-value">{{ fmtQty(data.mm.sellQty) }}<span>万</span></div>
-                <div class="mini-sub">均价 {{ data.mm.avgSell }}</div>
+                <div class="leg-metrics">
+                  <div class="leg-row">
+                    <span>数量</span>
+                    <strong>{{ fmtQty(data.mm.sellQty) }}<em>万</em></strong>
+                  </div>
+                  <div class="leg-row">
+                    <span>金额</span>
+                    <strong>{{ fmtQty(data.mm.sellU) }}<em>万USDT</em></strong>
+                  </div>
+                  <div class="leg-row">
+                    <span>均价</span>
+                    <strong>{{ fmtPrice(data.mm.avgSell) }}</strong>
+                  </div>
+                </div>
               </div>
               <div class="trade-leg is-buy">
                 <div class="mini-label">买入</div>
-                <div class="mini-value">{{ fmtQty(data.mm.buyQty) }}<span>万</span></div>
-                <div class="mini-sub">均价 {{ data.mm.avgBuy }}</div>
+                <div class="leg-metrics">
+                  <div class="leg-row">
+                    <span>数量</span>
+                    <strong>{{ fmtQty(data.mm.buyQty) }}<em>万</em></strong>
+                  </div>
+                  <div class="leg-row">
+                    <span>金额</span>
+                    <strong>{{ fmtQty(data.mm.buyU) }}<em>万USDT</em></strong>
+                  </div>
+                  <div class="leg-row">
+                    <span>均价</span>
+                    <strong>{{ fmtPrice(data.mm.avgBuy) }}</strong>
+                  </div>
+                </div>
               </div>
             </div>
             <div class="trade-meta">
@@ -111,7 +121,7 @@
         <div class="card">
           <div class="card-header">
             <span>🪜 价格台阶</span>
-            <router-link class="inline-link" to="/ops/ladder">盘面代币 {{ fmtQty(ops.dump.userToken) }}万</router-link>
+            <router-link class="inline-link" to="/ops/ladder">现价到该档真实挂单 · 上卖墙 / 下买墙</router-link>
           </div>
           <div class="table-wrap mini-table">
             <table>
@@ -119,9 +129,10 @@
                 <tr>
                   <th>台阶</th>
                   <th>价格</th>
-                  <th>盘面代币</th>
-                  <th>预估卖出</th>
-                  <th>预估买入</th>
+                  <th>挂单</th>
+                  <th>金额</th>
+                  <th>累积</th>
+                  <th>金额</th>
                 </tr>
               </thead>
               <tbody>
@@ -134,9 +145,10 @@
                 >
                   <td>{{ row.label }}</td>
                   <td class="mini-price">{{ row.price }}</td>
-                  <td>{{ fmtQty(row.surfaceToken) }}</td>
-                  <td style="color:#ff5a7a;">{{ fmtQty(row.expectedSell) }}</td>
-                  <td style="color:#6a9aff;">{{ fmtQty(row.expectedBuy) }}</td>
+                  <td :style="{ color: bookColor(row) }">{{ fmtQty(row.bandQty) }}</td>
+                  <td :style="{ color: bookColor(row) }">{{ fmtQty(row.bandU) }}</td>
+                  <td :style="{ color: bookColor(row) }">{{ fmtQty(row.cumQty) }}</td>
+                  <td :style="{ color: bookColor(row) }">{{ fmtQty(row.cumU) }}</td>
                 </tr>
               </tbody>
             </table>
@@ -150,7 +162,7 @@
           <span class="badge">所内可成交 · 链上只是仓库</span>
         </div>
         <div class="supply-row">
-          <button type="button" class="kpi-item metric-half" @click="$router.push('/circ/exchange')">
+          <div class="kpi-item metric-half">
             <div class="label">所内流通</div>
             <div class="value" style="color:#6a9aff;">{{ fmtQty(data.kpis.circExchange) }}<span class="unit">万</span></div>
             <div class="comp-bar">
@@ -161,12 +173,12 @@
             <div class="comp-line">
               <span><em style="color:#4cd9a0;">活跃</em> {{ fmtQty(data.kpis.activeExchange) }}</span>
               <span><em style="color:#ffb347;">沉睡</em> {{ fmtQty(data.kpis.sleepExchange) }}</span>
-              <span class="comp-link" @click.stop="$router.push('/desk/mm')">
+              <span class="comp-link" @click.stop="$router.push('/ops/dump')">
                 <em style="color:#6a9aff;">做市</em> {{ fmtQty(data.kpis.mmQty) }}
               </span>
             </div>
-          </button>
-          <button type="button" class="kpi-item metric-half" @click="$router.push('/circ/onchain')">
+          </div>
+          <div class="kpi-item metric-half">
             <div class="label">链上仓库</div>
             <div class="value" style="color:#ff6b7a;">{{ fmtQty(data.kpis.circOnchain) }}<span class="unit">万</span></div>
             <div class="comp-bar">
@@ -178,13 +190,13 @@
               <span><em style="color:#a78bfa;">沉睡</em> {{ fmtQty(data.kpis.sleepOnchain) }}</span>
             </div>
             <div class="sub">不能成交 · 充回所内才可卖</div>
-          </button>
+          </div>
         </div>
       </div>
 
       <div class="card">
         <div class="card-header">
-          <span>🚨 操盘警报</span>
+          <span>🚨 报警</span>
           <div class="header-tools">
             <router-link class="inline-link" to="/alerts">查看全部</router-link>
             <span class="badge">{{ data.alertSummary }}</span>
@@ -210,7 +222,7 @@
                 <td>{{ item.time || '--' }}</td>
                 <td>
                   <span class="alert-level">
-                    <span class="status-dot" :style="{ background: item.color, boxShadow: 'none' }"></span>
+                    <span class="status-dot" :class="alertLevelDot(item.level)"></span>
                     {{ item.level || '关注' }}
                   </span>
                 </td>
@@ -230,6 +242,7 @@ import { api } from '@/api'
 import { appState } from '@/stores/app'
 import { usePageData } from '@/composables/usePageData'
 import PageState from '@/components/PageState.vue'
+import { actionDot, alertLevelDot } from '@/utils/palette'
 
 const { loading, error, data, bindPair } = usePageData(() =>
   api.getDashboard(
@@ -242,7 +255,7 @@ bindPair()
 
 const emptyOps = {
   formula: '',
-  stance: { action: '--', actionColor: 'yellow', actionWhy: '', lastPrice: '--', avgCost: '--', devPct: 0, mmCost: '--', mmDevPct: 0, nextStop: '--', nextFloor: '--' },
+  stance: { action: '--', actionWhy: '', lastPrice: '--', avgCost: '--', devPct: 0, mmCost: '--', mmDevPct: 0, nextStop: '--', nextFloor: '--' },
   dump: {},
   absorb: {},
   users: {},
@@ -271,6 +284,12 @@ function signed(value) {
   const n = Number(value)
   if (Number.isNaN(n)) return '--'
   return n > 0 ? `+${n}` : String(n)
+}
+
+function bookColor(row) {
+  if (row?.bookSide === 'ask' || row?.side === 'up') return '#ff5a7a'
+  if (row?.bookSide === 'bid' || row?.side === 'down') return '#6a9aff'
+  return ''
 }
 
 function fmtPrice(value) {
@@ -314,7 +333,7 @@ function barFlex(value) {
   margin-left: 1px;
 }
 .kpi-grid.cockpit {
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(4, 1fr);
 }
 .mini-kpis {
   display: grid;
@@ -344,17 +363,39 @@ function barFlex(value) {
 .trade-leg.is-buy {
   background: rgba(106, 154, 255, 0.08);
 }
-.trade-leg.is-sell .mini-value {
+.trade-leg.is-sell .leg-row strong {
   color: #ff5a7a;
 }
-.trade-leg.is-buy .mini-value {
+.trade-leg.is-buy .leg-row strong {
   color: #6a9aff;
 }
-.trade-leg .mini-value {
-  margin-top: 2px;
+.leg-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
 }
-.trade-leg .mini-sub {
-  margin-top: 4px;
+.leg-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+.leg-row span {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+.leg-row strong {
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.leg-row em {
+  margin-left: 2px;
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--text-soft);
 }
 .trade-meta {
   display: grid;
@@ -501,11 +542,6 @@ function barFlex(value) {
 }
 .row-link:hover td {
   color: var(--text-title);
-}
-@media (max-width: 1400px) {
-  .kpi-grid.cockpit {
-    grid-template-columns: repeat(4, 1fr);
-  }
 }
 @media (max-width: 900px) {
   .kpi-grid.cockpit {

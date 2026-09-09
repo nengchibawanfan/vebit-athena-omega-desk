@@ -33,7 +33,7 @@ import { addressDetailPath, maskAddr } from '@/utils/address'
 
 const props = defineProps({
   address: { type: String, default: '' },
-  link: { type: Boolean, default: true }
+  link: { type: Boolean, default: false }
 })
 
 const route = useRoute()

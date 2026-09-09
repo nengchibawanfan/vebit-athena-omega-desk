@@ -19,15 +19,11 @@
               <span class="badge">所内可卖供给 · 不含做市 / 金库等</span>
             </div>
           </div>
-          <div class="monitor-status">
-            <div v-for="item in data.status" :key="item.text" class="status-item">
-              <span class="status-dot" :class="item.color"></span> {{ item.text }}
-            </div>
-          </div>
+          <StatusStrip :items="data.status" />
           <p class="blurb">
             日充值 / 提现。点日期看当日明细。
             <router-link class="inline-link" to="/whales/exchange">看今日</router-link>
-            <router-link class="inline-link" to="/orderbook/blocks">盘口大单</router-link>
+            <router-link class="inline-link" to="/orderbook">盘口大单</router-link>
           </p>
         </div>
 
@@ -133,6 +129,7 @@ import { isDeskToday } from '@/config/constants'
 import { usePageData } from '@/composables/usePageData'
 import ChartBox from '@/components/ChartBox.vue'
 import PageState from '@/components/PageState.vue'
+import StatusStrip from '@/components/StatusStrip.vue'
 
 const ranges = [
   { days: 7, label: '7天' },

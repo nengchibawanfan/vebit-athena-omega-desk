@@ -30,27 +30,9 @@ npm run preview    # 预览构建结果
 
 ## 约定接口
 
-所有 GET 都带查询参数 `pair`（如 `BTC/USDT`），字段需与 mock 返回结构一致，详见 `src/api/mock/index.js`。
+**交给后端的完整约定（路径、请求、返回、每个数字怎么算）见 [docs/API.md](docs/API.md)。**
 
-| 方法 | 路径 | 用途 |
-| --- | --- | --- |
-| GET | `/api/pairs` | 交易对列表 |
-| GET | `/api/dashboard` | 总览 KPI / 缩略图 |
-| GET | `/api/desk/mm` | 做市账户今日 |
-| GET | `/api/desk/mm/history` | 做市账户历史（`days=7|15|30`） |
-| GET | `/api/desk/users` | 真实用户今日 |
-| GET | `/api/desk/users/history` | 真实用户历史（`days=7|15|30`） |
-| GET | `/api/orderbook` | 盘口深度、足迹、挂单表 |
-| GET | `/api/position` | 筹码分布、持仓列表 |
-| GET | `/api/risk` | 机器人风控 |
-| GET | `/api/macro` | 宏观 / 巨鲸摘要 |
-| GET | `/api/orders` | 挂单明细快照（进入页面先拉一次） |
-| GET | `/api/holders` | 持仓明细 |
-| GET | `/api/whales` | 巨鲸警报 |
-| GET | `/api/stable-profit` | 稳定盈利筛查 |
-| GET | `/api/trade-risk` | 交易风控 |
-| GET | `/api/user-profile` | 用户画像 |
-| PUT | `/api/user-rules` | 保存用户标签规则 |
+所有 GET 都带查询参数 `pair`（如 `VBT/USDT`）。历史接口前端传 `days=all`（全部历史，不是 7/15/30）。
 
 挂单明细在 REST 快照之后走 **WebSocket 实时推送**，不要靠轮询刷新整表。WS 连续失败约 4 次后会短暂降级为 REST 轮询，连上后再切回推送。
 

@@ -7,6 +7,15 @@ export function copyToast() {
   return toast
 }
 
+export function showToast(text, ms = 1600) {
+  toast.value = String(text || '').trim()
+  clearTimeout(timer)
+  if (!toast.value) return
+  timer = setTimeout(() => {
+    toast.value = ''
+  }, ms)
+}
+
 export async function copyText(text) {
   const value = String(text || '').trim()
   if (!value) return false
@@ -24,18 +33,10 @@ export async function copyText(text) {
       document.execCommand('copy')
       document.body.removeChild(input)
     }
-    toast.value = '复制成功'
-    clearTimeout(timer)
-    timer = setTimeout(() => {
-      toast.value = ''
-    }, 1600)
+    showToast('复制成功')
     return true
   } catch {
-    toast.value = '复制失败'
-    clearTimeout(timer)
-    timer = setTimeout(() => {
-      toast.value = ''
-    }, 1600)
+    showToast('复制失败')
     return false
   }
 }

@@ -56,11 +56,7 @@
         </div>
 
         <div class="card">
-          <div class="monitor-status">
-            <div v-for="item in data.status" :key="item.text" class="status-item">
-              <span class="status-dot" :class="item.color"></span> {{ item.text }}
-            </div>
-          </div>
+          <StatusStrip :items="data.status" />
         </div>
 
         <div class="kpi-grid">
@@ -70,7 +66,6 @@
               <div class="value">{{ fmtQty(data.kpis.equityU) }}<span class="unit">万USDT</span></div>
               <div class="qty">现金 {{ fmtQty(data.kpis.cashU) }} · 代币 {{ fmtQty(data.kpis.tokenU) }}<span class="unit">万USDT</span></div>
             </div>
-            <div class="sub">{{ data.scope === 'all' ? '全站折 USDT' : `${data.token} + 现金` }}</div>
           </div>
           <div class="kpi-item">
             <div class="label">持仓</div>
@@ -90,9 +85,30 @@
             <div class="label">今日买入</div>
             <div class="kpi-metrics">
               <div class="value" style="color:#6a9aff;">{{ fmtQty(data.kpis.todayBuy) }}<span class="unit">{{ data.qtyUnit }}</span></div>
-              <div class="qty">卖出 {{ fmtQty(data.kpis.todaySell) }} · 净 {{ signedQty(data.kpis.todayNet) }}</div>
             </div>
-            <div class="sub">他买 = 你卖出 · 他卖 = 你买入</div>
+            <div class="sub">当日成交</div>
+          </div>
+          <div class="kpi-item">
+            <div class="label">今日卖出</div>
+            <div class="kpi-metrics">
+              <div class="value" style="color:#ffb347;">{{ fmtQty(data.kpis.todaySell) }}<span class="unit">{{ data.qtyUnit }}</span></div>
+              <div class="qty">净 {{ signedQty(data.kpis.todayNet) }}</div>
+            </div>
+            <div class="sub">当日成交</div>
+          </div>
+          <div class="kpi-item">
+            <div class="label">总买入</div>
+            <div class="kpi-metrics">
+              <div class="value" style="color:#6a9aff;">{{ fmtQty(data.kpis.totalBuy) }}<span class="unit">{{ data.qtyUnit }}</span></div>
+            </div>
+            <div class="sub">注册以来</div>
+          </div>
+          <div class="kpi-item">
+            <div class="label">总卖出</div>
+            <div class="kpi-metrics">
+              <div class="value" style="color:#ffb347;">{{ fmtQty(data.kpis.totalSell) }}<span class="unit">{{ data.qtyUnit }}</span></div>
+            </div>
+            <div class="sub">注册以来</div>
           </div>
           <div class="kpi-item">
             <div class="label">浮盈亏</div>
@@ -140,45 +156,6 @@
           </div>
         </div>
 
-        <div class="card">
-          <div class="card-header">
-            <span>🧭 交易习惯</span>
-            <span class="badge">{{ data.scopeLabel }}</span>
-          </div>
-          <div class="habit-grid">
-            <div v-for="item in data.habits" :key="item.label" class="habit-item">
-              <div class="habit-label">{{ item.label }}</div>
-              <div class="habit-value">{{ item.value }}</div>
-              <div class="habit-note">{{ item.note }}</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-header">
-            <span>📊 近30日买卖</span>
-            <span class="badge">{{ data.qtyNote }}</span>
-          </div>
-          <ChartBox size="xlarge" :option="tradeOption" />
-        </div>
-
-        <div class="grid-2">
-          <div class="card">
-            <div class="card-header">
-              <span>📦 持仓与盈亏</span>
-              <span class="badge">数量 + 浮盈亏</span>
-            </div>
-            <ChartBox size="tall" :option="posOption" />
-          </div>
-          <div class="card">
-            <div class="card-header">
-              <span>⏰ 活跃时段</span>
-              <span class="badge">24h 成交笔数</span>
-            </div>
-            <ChartBox size="tall" :option="hourOption" />
-          </div>
-        </div>
-
         <div class="grid-2">
           <div class="card">
             <div class="card-header">
@@ -221,6 +198,36 @@
           </div>
         </div>
 
+        <div class="card">
+          <div class="card-header">
+            <span>🧭 交易习惯</span>
+            <span class="badge">{{ data.scopeLabel }}</span>
+          </div>
+          <div class="habit-grid">
+            <div v-for="item in habits" :key="item.label" class="habit-item">
+              <div class="habit-label">{{ item.label }}</div>
+              <div class="habit-value">{{ item.value }}</div>
+              <div class="habit-note">{{ item.note }}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span>📊 近30日买卖</span>
+            <span class="badge">{{ data.qtyNote }}</span>
+          </div>
+          <ChartBox size="xlarge" :option="tradeOption" />
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span>📦 持仓与盈亏</span>
+            <span class="badge">数量 + 浮盈亏</span>
+          </div>
+          <ChartBox size="tall" :option="posOption" />
+        </div>
+
         <div class="card detail-table-card">
           <div class="card-header">
             <span>🧾 成交纪录</span>
@@ -253,6 +260,46 @@
             </table>
           </div>
         </div>
+
+        <div class="card detail-table-card">
+          <div class="card-header">
+            <span>🚚 充提历史</span>
+            <div class="header-tools">
+              <router-link class="inline-link" to="/whales/exchange">看全站充提</router-link>
+              <span class="badge">{{ data.scope === 'all' ? '全部代币' : data.token }} · 近30日 · {{ transferRows.length }} 笔</span>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>时间</th>
+                  <th>代币</th>
+                  <th>操作</th>
+                  <th>金额(万)</th>
+                  <th>约合USDT</th>
+                  <th>网络</th>
+                  <th>关联地址</th>
+                  <th>状态</th>
+                  <th>备注</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(row, index) in transferRows" :key="`${row.time}-${row.action}-${index}`">
+                  <td>{{ row.time }}</td>
+                  <td>{{ row.token }}</td>
+                  <td :class="'amt-' + row.actionClass">{{ row.action }}</td>
+                  <td :class="'amt-' + row.actionClass">{{ fmtQty(row.amount) }}</td>
+                  <td>{{ fmtQty(row.amountU) }}</td>
+                  <td>{{ row.chain }}</td>
+                  <td><CopyAddr :address="row.address" /></td>
+                  <td><span class="tag" :class="row.statusTag">{{ row.status }}</span></td>
+                  <td>{{ row.note }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </template>
     </PageState>
   </div>
@@ -267,6 +314,9 @@ import { expandUid, lastDeskUid, saveLastDeskUid, userDetailPath } from '@/utils
 import { usePageData } from '@/composables/usePageData'
 import ChartBox from '@/components/ChartBox.vue'
 import PageState from '@/components/PageState.vue'
+import CopyAddr from '@/components/CopyAddr.vue'
+import StatusStrip from '@/components/StatusStrip.vue'
+import { tokenHex } from '@/utils/palette'
 
 const route = useRoute()
 const router = useRouter()
@@ -322,6 +372,17 @@ function submitUid() {
   router.push(userDetailPath(parsed.uid))
 }
 
+const HIDDEN_HABITS = new Set(['买卖偏好', '活跃时段'])
+const habits = computed(() => (data.value?.habits || []).filter((item) => !HIDDEN_HABITS.has(item.label)))
+
+const transferRows = computed(() => {
+  const rows = data.value?.transfers || []
+  if ((data.value?.scope || scope.value) === 'all') return rows
+  const pair = data.value?.pair || appState.currentPair
+  const token = data.value?.token || String(pair || '').split('/')[0]
+  return rows.filter((row) => row.pair === pair || row.token === token)
+})
+
 function fmtQty(value) {
   const n = Number(value)
   if (Number.isNaN(n)) return '--'
@@ -361,12 +422,12 @@ const tradeOption = computed(() => {
     yAxis: { ...yAxis, name: data.value?.qtyUnit || '万', nameTextStyle: { color: '#4a6080', fontSize: 9 } },
     series: all
       ? [
-          ...tokens.map((row) => ({
+          ...tokens.map((row, index) => ({
             name: `${row.name}买入`,
             type: 'bar',
             stack: 'buy',
             data: row.buy,
-            itemStyle: { color: row.color }
+            itemStyle: { color: tokenHex(row.name, index) }
           })),
           { name: '卖出合计', type: 'line', data: history?.sell || [], smooth: true, lineStyle: { color: '#ff5a7a', width: 2 }, symbol: 'circle', symbolSize: 4 }
         ]
@@ -398,29 +459,15 @@ const posOption = computed(() => {
   }
 })
 
-const hourOption = computed(() => ({
-  tooltip: { trigger: 'axis' },
-  grid: { left: '8%', right: '4%', top: '10%', bottom: '14%' },
-  xAxis: { data: data.value?.hours?.labels || [], axisLabel: { color: '#4a6080', fontSize: 8, interval: 3 } },
-  yAxis,
-  series: [{
-    name: '成交笔数',
-    type: 'bar',
-    data: data.value?.hours?.trades || [],
-    itemStyle: { color: 'rgba(167,139,250,0.82)' },
-    barWidth: '48%'
-  }]
-}))
-
 const assetOption = computed(() => ({
   tooltip: { trigger: 'item' },
   series: [{
     type: 'pie',
     radius: ['42%', '68%'],
-    data: (data.value?.assets || []).map((row) => ({
+    data: (data.value?.assets || []).map((row, index) => ({
       value: row.valueU,
       name: row.token,
-      itemStyle: { color: row.color }
+      itemStyle: { color: tokenHex(row.token, index) }
     })),
     label: { color: '#b0c8e8', fontSize: 10, formatter: '{b}\n{d}%' }
   }]
@@ -545,7 +592,7 @@ const assetOption = computed(() => ({
 }
 .habit-grid {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 10px;
 }
 .habit-item {
@@ -569,12 +616,30 @@ const assetOption = computed(() => ({
   font-size: 10px;
   color: var(--text-muted);
 }
+.header-tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.inline-link {
+  color: #6a9aff;
+  text-decoration: none;
+}
+.inline-link:hover {
+  text-decoration: underline;
+}
+.amt-deposit {
+  color: #ff5a7a;
+}
+.amt-withdraw {
+  color: #4cd9a0;
+}
 @media (max-width: 1100px) {
   .kpi-grid {
     grid-template-columns: repeat(2, 1fr);
   }
   .habit-grid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 </style>

@@ -125,6 +125,54 @@
             </div>
             <div class="sub">按 UID 计 · 点击筛选</div>
           </div>
+          <div class="kpi-item">
+            <div class="label">所内可卖</div>
+            <div class="kpi-metrics">
+              <div class="value">{{ fmtQty(data.kpis.totalAmount) }}<span class="unit">万</span></div>
+            </div>
+            <div class="sub">交易所用户持仓合计</div>
+          </div>
+          <div class="kpi-item">
+            <div class="label">活跃筹码</div>
+            <div class="kpi-metrics">
+              <div class="value" style="color:#4cd9a0;">{{ fmtQty(data.kpis.activeAmount) }}<span class="unit">万</span></div>
+            </div>
+            <div class="sub">名单中 {{ data.kpis.activeUsers }} 人近期有成交</div>
+          </div>
+          <div class="kpi-item">
+            <div class="label">沉睡筹码</div>
+            <div class="kpi-metrics">
+              <div class="value" style="color:#ffb347;">{{ fmtQty(data.kpis.sleepAmount) }}<span class="unit">万</span></div>
+            </div>
+            <div class="sub">≥{{ data.kpis.sleepIdleDays }}天无成交</div>
+          </div>
+          <div class="kpi-item">
+            <div class="label">沉睡占比</div>
+            <div class="kpi-metrics">
+              <div class="value" style="color:#ffb347;">{{ data.kpis.sleepRatio }}<span class="unit">%</span></div>
+              <div class="qty">大户 ≥{{ sizeThreshold }}万 占沉睡 {{ largeSleepShare }}<span class="unit">%</span></div>
+            </div>
+            <div class="sub">占所内可卖</div>
+          </div>
+          <div class="kpi-item">
+            <div class="label">沉睡用户</div>
+            <div class="kpi-metrics">
+              <div class="value" style="color:#a78bfa;">{{ data.kpis.sleepUsers }}<span class="unit">人</span></div>
+            </div>
+            <div class="sub">前 {{ data.kpis.shownCount }} 名中</div>
+          </div>
+          <div class="kpi-item">
+            <div class="label">近30日变化</div>
+            <div class="kpi-metrics">
+              <div class="value" :style="{ color: data.kpis.change30 >= 0 ? '#ffb347' : '#4cd9a0' }">
+                {{ data.kpis.change30 >= 0 ? '+' : '' }}{{ data.kpis.change30 }}<span class="unit">%</span>
+              </div>
+              <div class="qty" :style="{ color: data.kpis.change30Amount >= 0 ? '#ffb347' : '#4cd9a0' }">
+                {{ data.kpis.change30Amount >= 0 ? '+' : '' }}{{ fmtQty(data.kpis.change30Amount) }}<span class="unit">万</span>
+              </div>
+            </div>
+            <div class="sub">沉睡筹码较30日前</div>
+          </div>
         </div>
 
         <div class="card">
@@ -179,57 +227,6 @@
           <div class="card">
             <div class="card-header"><span>😰 相对现价分层</span><span class="badge">按持仓均价离现价远近</span></div>
             <ChartBox :option="pnlBucketOption" />
-          </div>
-        </div>
-
-        <div class="kpi-grid holder-kpis">
-          <div class="kpi-item">
-            <div class="label">所内可卖</div>
-            <div class="kpi-metrics">
-              <div class="value">{{ fmtQty(data.kpis.totalAmount) }}<span class="unit">万</span></div>
-            </div>
-            <div class="sub">交易所用户持仓合计</div>
-          </div>
-          <div class="kpi-item">
-            <div class="label">活跃筹码</div>
-            <div class="kpi-metrics">
-              <div class="value" style="color:#4cd9a0;">{{ fmtQty(data.kpis.activeAmount) }}<span class="unit">万</span></div>
-            </div>
-            <div class="sub">名单中 {{ data.kpis.activeUsers }} 人近期有成交</div>
-          </div>
-          <div class="kpi-item">
-            <div class="label">沉睡筹码</div>
-            <div class="kpi-metrics">
-              <div class="value" style="color:#ffb347;">{{ fmtQty(data.kpis.sleepAmount) }}<span class="unit">万</span></div>
-            </div>
-            <div class="sub">≥{{ data.kpis.sleepIdleDays }}天无成交</div>
-          </div>
-          <div class="kpi-item">
-            <div class="label">沉睡占比</div>
-            <div class="kpi-metrics">
-              <div class="value" style="color:#ffb347;">{{ data.kpis.sleepRatio }}<span class="unit">%</span></div>
-              <div class="qty">大户 ≥{{ sizeThreshold }}万 占沉睡 {{ largeSleepShare }}<span class="unit">%</span></div>
-            </div>
-            <div class="sub">占所内可卖</div>
-          </div>
-          <div class="kpi-item">
-            <div class="label">沉睡用户</div>
-            <div class="kpi-metrics">
-              <div class="value" style="color:#a78bfa;">{{ data.kpis.sleepUsers }}<span class="unit">人</span></div>
-            </div>
-            <div class="sub">前 {{ data.kpis.shownCount }} 名中</div>
-          </div>
-          <div class="kpi-item">
-            <div class="label">近30日变化</div>
-            <div class="kpi-metrics">
-              <div class="value" :style="{ color: data.kpis.change30 >= 0 ? '#ffb347' : '#4cd9a0' }">
-                {{ data.kpis.change30 >= 0 ? '+' : '' }}{{ data.kpis.change30 }}<span class="unit">%</span>
-              </div>
-              <div class="qty" :style="{ color: data.kpis.change30Amount >= 0 ? '#ffb347' : '#4cd9a0' }">
-                {{ data.kpis.change30Amount >= 0 ? '+' : '' }}{{ fmtQty(data.kpis.change30Amount) }}<span class="unit">万</span>
-              </div>
-            </div>
-            <div class="sub">沉睡筹码较30日前</div>
           </div>
         </div>
 
@@ -308,13 +305,13 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="row in visibleRows" :key="row.id" class="row-link" :class="{ 'is-sleep': row.status === '沉睡' }" @click="$router.push(userDetailPath(row.id))">
+                <tr v-for="row in holderPager.pagedRows" :key="row.id" class="row-link" :class="{ 'is-sleep': row.status === '沉睡' }" @click="$router.push(userDetailPath(row.id))">
                   <td>{{ row.id }}</td>
                   <td>{{ row.amount }}</td>
                   <td>{{ row.costLabel || row.cost }}</td>
                   <td>{{ row.costBand }}</td>
-                  <td :style="{ color: row.pnlColor }">{{ row.pnl }}</td>
-                  <td :style="{ color: row.pnlColor }">{{ row.ratio }}</td>
+                  <td :style="{ color: signedHex(row.pnlWan) }">{{ row.pnl }}</td>
+                  <td :style="{ color: signedHex(row.pnlWan) }">{{ row.ratio }}</td>
                   <td>{{ row.lastActive }}</td>
                   <td>{{ row.sleepDays }}</td>
                   <td>{{ row.days }}</td>
@@ -323,6 +320,13 @@
               </tbody>
             </table>
           </div>
+          <TablePager
+            v-model:page="holderPager.page"
+            v-model:page-size="holderPager.pageSize"
+            :page-count="holderPager.pageCount"
+            :total="holderPager.total"
+            :range-text="holderPager.rangeText"
+          />
         </div>
       </template>
     </PageState>
@@ -335,9 +339,12 @@ import { api } from '@/api'
 import { appState, updateConfig } from '@/stores/app'
 import { userDetailPath } from '@/utils/uid'
 import { usePageData } from '@/composables/usePageData'
+import { usePager } from '@/composables/usePager'
 import ChartBox from '@/components/ChartBox.vue'
 import PageState from '@/components/PageState.vue'
 import CollapsibleConfig from '@/components/CollapsibleConfig.vue'
+import TablePager from '@/components/TablePager.vue'
+import { namedHex, signedHex } from '@/utils/palette'
 
 const tableFilter = ref('all')
 const costMetric = ref('amount')
@@ -438,6 +445,7 @@ const visibleRows = computed(() => {
   if (bandFilter.value) rows = rows.filter((row) => row.costBand === bandFilter.value)
   return rows
 })
+const holderPager = usePager(visibleRows)
 
 const tableBadge = computed(() => {
   const n = visibleRows.value.length
@@ -660,7 +668,7 @@ const pnlBucketOption = computed(() => ({
     data: (data.value?.pnlBuckets || []).map((item) => ({
       name: item.name,
       value: item.amount,
-      itemStyle: { color: item.color }
+      itemStyle: { color: namedHex(item.name) }
     })),
     label: { color: '#b0c8e8', fontSize: 9, formatter: '{b}\n{d}%' },
     labelLine: { lineStyle: { color: '#2a3a5a' } }

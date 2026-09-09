@@ -6,42 +6,27 @@
           <span>👥 {{ pageTitle }}</span>
           <div class="header-tools">
             <router-link v-if="!isToday" class="inline-link" to="/desk/users">看今日</router-link>
-            <router-link class="inline-link" to="/desk/users/history">历史交易情况</router-link>
-            <router-link class="inline-link" to="/ops/absorb">今日资产情况</router-link>
-            <span class="badge">{{ isToday ? '不含做市 / 金库等' : `${data.dateLabel} · 不含做市 / 金库等` }}</span>
+            <router-link class="inline-link" to="/desk/users/history">历史</router-link>
+            <router-link class="inline-link" to="/desk/users/chips">筹码分布</router-link>
+            <span class="badge">{{ isToday ? '交易 + 资产 · 不含做市 / 金库等' : `${data.dateLabel} · 交易 + 资产` }}</span>
           </div>
         </div>
-        <div class="monitor-status">
-          <div v-for="item in data.status" :key="item.text" class="status-item">
-            <span class="status-dot" :class="item.color"></span> {{ item.text }}
-          </div>
-        </div>
+        <StatusStrip :items="data.status" />
       </div>
 
       <div class="kpi-grid">
-        <div class="kpi-item" @click="$router.push('/chips/user')">
-          <div class="label">{{ dayWord }}真实交易用户</div>
+        <div class="kpi-item">
+          <div class="label">平台用户代币</div>
           <div class="kpi-metrics">
-            <div class="value" style="color:#4cd9a0;">{{ data.kpis.realUsers }}<span class="unit">人</span></div>
-            <div class="qty">占持仓 {{ data.kpis.tradedPct }}<span class="unit">%</span></div>
+            <div class="value" style="color:#ffb347;">{{ fmtQty(data.absorb?.userToken) }}<span class="unit">万</span></div>
+            <div class="qty">{{ fmtQty(data.absorb?.userTokenU) }}<span class="unit">万USDT</span></div>
           </div>
-          <div class="sub">当日有成交的真实 UID</div>
         </div>
         <div class="kpi-item">
-          <div class="label">真实买入</div>
+          <div class="label">平台用户USDT</div>
           <div class="kpi-metrics">
-            <div class="value" style="color:#6a9aff;">{{ fmtQty(data.kpis.realBuy) }}<span class="unit">万</span></div>
-            <div class="qty">{{ fmtQty(data.kpis.realBuyU) }}<span class="unit">万USDT</span></div>
+            <div class="value" style="color:#4cd9a0;">{{ fmtQty(data.absorb?.userCashU) }}<span class="unit">万USDT</span></div>
           </div>
-          <div class="sub">用户买入 · 你在卖出</div>
-        </div>
-        <div class="kpi-item">
-          <div class="label">真实卖出</div>
-          <div class="kpi-metrics">
-            <div class="value" style="color:#ffb347;">{{ fmtQty(data.kpis.realSell) }}<span class="unit">万</span></div>
-            <div class="qty">{{ fmtQty(data.kpis.realSellU) }}<span class="unit">万USDT</span></div>
-          </div>
-          <div class="sub">用户卖出 · 你这边是买入</div>
         </div>
         <div class="kpi-item">
           <div class="label">用户净买入</div>
@@ -50,7 +35,32 @@
               {{ signedQty(data.kpis.realNet) }}<span class="unit">万</span>
             </div>
           </div>
-          <div class="sub">{{ data.kpis.realNet >= 0 ? '散户在接你的卖出' : '散户在给你买入' }}</div>
+        </div>
+        <div class="kpi-item">
+          <div class="label">真实买入</div>
+          <div class="kpi-metrics">
+            <div class="value" style="color:#6a9aff;">{{ fmtQty(data.kpis.realBuy) }}<span class="unit">万</span></div>
+            <div class="qty">{{ fmtQty(data.kpis.realBuyU) }}<span class="unit">万USDT</span></div>
+          </div>
+        </div>
+        <div class="kpi-item">
+          <div class="label">买入用户</div>
+          <div class="kpi-metrics">
+            <div class="value" style="color:#6a9aff;">{{ data.kpis.buyUsers }}<span class="unit">人</span></div>
+          </div>
+        </div>
+        <div class="kpi-item">
+          <div class="label">买入均价</div>
+          <div class="kpi-metrics">
+            <div class="value" style="color:#6a9aff;">{{ fmtPrice(data.kpis.avgBuy) }}</div>
+          </div>
+        </div>
+        <div class="kpi-item">
+          <div class="label">{{ dayWord }}真实交易用户</div>
+          <div class="kpi-metrics">
+            <div class="value" style="color:#4cd9a0;">{{ data.kpis.realUsers }}<span class="unit">人</span></div>
+            <div class="qty">占持仓 {{ data.kpis.tradedPct }}<span class="unit">%</span></div>
+          </div>
         </div>
         <div class="kpi-item">
           <div class="label">新增交易用户</div>
@@ -59,65 +69,36 @@
           </div>
           <div class="sub">{{ dayWord }}首次成交</div>
         </div>
-        <div class="kpi-item" @click="$router.push('/chips/user')">
+        <div class="kpi-item is-link" @click="$router.push('/desk/users/chips')">
           <div class="label">持仓用户</div>
           <div class="kpi-metrics">
             <div class="value">{{ data.kpis.holders }}<span class="unit">人</span></div>
           </div>
-          <div class="sub">交易所侧当前持仓 UID</div>
         </div>
-      </div>
-
-      <div class="kpi-grid">
         <div class="kpi-item">
-          <div class="label">买入用户</div>
+          <div class="label">真实卖出</div>
           <div class="kpi-metrics">
-            <div class="value" style="color:#6a9aff;">{{ data.kpis.buyUsers }}<span class="unit">人</span></div>
+            <div class="value" style="color:#ffb347;">{{ fmtQty(data.kpis.realSell) }}<span class="unit">万</span></div>
+            <div class="qty">{{ fmtQty(data.kpis.realSellU) }}<span class="unit">万USDT</span></div>
           </div>
-          <div class="sub">{{ dayWord }}有买单的真实 UID</div>
         </div>
         <div class="kpi-item">
           <div class="label">卖出用户</div>
           <div class="kpi-metrics">
             <div class="value" style="color:#ffb347;">{{ data.kpis.sellUsers }}<span class="unit">人</span></div>
           </div>
-          <div class="sub">{{ dayWord }}有卖单的真实 UID</div>
         </div>
         <div class="kpi-item">
-          <div class="label">回流用户</div>
-          <div class="kpi-metrics">
-            <div class="value">{{ data.kpis.returning }}<span class="unit">人</span></div>
-          </div>
-          <div class="sub">非{{ dayWord }}首次成交</div>
-        </div>
-        <div class="kpi-item">
-          <div class="label">人均成交</div>
-          <div class="kpi-metrics">
-            <div class="value">{{ fmtQty(data.kpis.avgTicket) }}<span class="unit">万</span></div>
-          </div>
-          <div class="sub">(买+卖) / 交易用户</div>
-        </div>
-        <div class="kpi-item">
-          <div class="label">用户均买价</div>
-          <div class="kpi-metrics">
-            <div class="value" style="color:#6a9aff;">{{ fmtPrice(data.kpis.avgBuy) }}</div>
-            <div class="qty">现价 {{ fmtPrice(data.kpis.lastPrice) }}</div>
-          </div>
-          <div class="sub">接近做市均卖价</div>
-        </div>
-        <div class="kpi-item">
-          <div class="label">用户均卖价</div>
+          <div class="label">卖出均价</div>
           <div class="kpi-metrics">
             <div class="value" style="color:#ffb347;">{{ fmtPrice(data.kpis.avgSell) }}</div>
           </div>
-          <div class="sub">接近做市均买价</div>
         </div>
       </div>
-
       <div class="grid-2">
         <div class="card">
-          <div class="card-header"><span>💹 用户买 / 卖</span><span class="badge">万枚</span></div>
-          <ChartBox :option="flowOption" />
+          <div class="card-header"><span>💹 用户买 / 卖</span><span class="badge">按成交价 · 万枚</span></div>
+          <ChartBox :option="priceFlowOption" />
         </div>
         <div class="card">
           <div class="card-header"><span>👤 活跃人数</span><span class="badge">分时</span></div>
@@ -158,7 +139,7 @@
       <div class="card">
         <div class="card-header">
           <span>📋 {{ dayWord }}成交用户</span>
-          <span class="badge">抽样 · 点 UID 进持仓分布</span>
+          <span class="badge">抽样 · 点 UID 进单 UID</span>
         </div>
         <div class="table-wrap">
           <table>
@@ -166,7 +147,6 @@
               <tr>
                 <th>UID</th>
                 <th>标签</th>
-                <th>类型</th>
                 <th>买入(万)</th>
                 <th>卖出(万)</th>
                 <th>净买入</th>
@@ -176,10 +156,9 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="row in data.traders" :key="row.uid" class="row-link" @click="$router.push(userDetailPath(row.uid))">
+              <tr v-for="row in traderPager.pagedRows" :key="row.uid" class="row-link" @click="$router.push(userDetailPath(row.uid))">
                 <td>{{ row.uid }}</td>
                 <td><span class="tag" :class="row.tagClass">{{ row.tag }}</span></td>
-                <td>{{ row.kind }}</td>
                 <td>{{ fmtQty(row.buy) }}</td>
                 <td>{{ fmtQty(row.sell) }}</td>
                 <td :style="{ color: row.net >= 0 ? '#6a9aff' : '#ffb347' }">{{ signedQty(row.net) }}</td>
@@ -190,6 +169,13 @@
             </tbody>
           </table>
         </div>
+        <TablePager
+          v-model:page="traderPager.page"
+          v-model:page-size="traderPager.pageSize"
+          :page-count="traderPager.pageCount"
+          :total="traderPager.total"
+          :range-text="traderPager.rangeText"
+        />
       </div>
     </div>
   </PageState>
@@ -202,14 +188,24 @@ import { api } from '@/api'
 import { appState } from '@/stores/app'
 import { userDetailPath } from '@/utils/uid'
 import { usePageData } from '@/composables/usePageData'
+import { usePager } from '@/composables/usePager'
 import ChartBox from '@/components/ChartBox.vue'
 import PageState from '@/components/PageState.vue'
+import StatusStrip from '@/components/StatusStrip.vue'
+import TablePager from '@/components/TablePager.vue'
+import { namedHex } from '@/utils/palette'
 
 const route = useRoute()
 const dayDate = computed(() => (typeof route.query.date === 'string' ? route.query.date : ''))
-const { loading, error, data, bindPair, load } = usePageData(() =>
-  api.getUsersToday(appState.currentPair, appState.config.internalAccounts || [], dayDate.value)
-)
+const { loading, error, data, bindPair, load } = usePageData(async () => {
+  const pair = appState.currentPair
+  const accounts = appState.config.internalAccounts || []
+  const [users, ops] = await Promise.all([
+    api.getUsersToday(pair, accounts, dayDate.value),
+    api.getOpsDesk(pair, appState.config.sleepIdleDays, accounts, dayDate.value)
+  ])
+  return { ...users, absorb: ops.absorb }
+})
 bindPair()
 watch(dayDate, () => load())
 
@@ -217,9 +213,10 @@ const isToday = computed(() => data.value?.isToday !== false)
 const dayWord = computed(() => (isToday.value ? '今日' : '当日'))
 const pageTitle = computed(() => (
   isToday.value
-    ? '真实用户今日交易情况'
-    : `真实用户${data.value?.dateTitle || '当日'}交易情况`
+    ? '真实用户今日'
+    : `真实用户${data.value?.dateTitle || '当日'}`
 ))
+const traderPager = usePager(computed(() => data.value?.traders || []))
 
 function fmtQty(value) {
   const n = Number(value)
@@ -254,17 +251,62 @@ const xAxis = computed(() => ({
   axisLabel: { color: '#4a6080', fontSize: 8, interval: 3 }
 }))
 
-const flowOption = computed(() => ({
-  tooltip: { trigger: 'axis' },
-  legend: { ...legend, data: ['买入', '卖出'] },
-  grid: { left: '8%', right: '4%', top: '16%', bottom: '12%' },
-  xAxis: xAxis.value,
-  yAxis,
-  series: [
-    { name: '买入', type: 'bar', data: data.value?.history?.buyHour || [], itemStyle: { color: '#6a9aff' }, barWidth: '28%' },
-    { name: '卖出', type: 'bar', data: data.value?.history?.sellHour || [], itemStyle: { color: '#ffb347' }, barWidth: '28%' }
-  ]
-}))
+function nearestPriceLabel(flow, price) {
+  const prices = flow?.prices || []
+  const labels = flow?.labels || []
+  const target = Number(price)
+  if (!prices.length || Number.isNaN(target)) return ''
+  let best = 0
+  let dist = Infinity
+  prices.forEach((value, index) => {
+    const gap = Math.abs(Number(value) - target)
+    if (gap < dist) {
+      dist = gap
+      best = index
+    }
+  })
+  return labels[best] || ''
+}
+
+const priceFlowOption = computed(() => {
+  const flow = data.value?.priceFlow || {}
+  const lastLabel = nearestPriceLabel(flow, flow.lastPrice)
+  const buyLabel = nearestPriceLabel(flow, flow.avgBuy)
+  const sellLabel = nearestPriceLabel(flow, flow.avgSell)
+  const markLines = [
+    lastLabel && { xAxis: lastLabel, lineStyle: { color: '#4cd9a0', type: 'solid', width: 1 }, label: { formatter: `现价 ${fmtPrice(flow.lastPrice)}`, color: '#4cd9a0', fontSize: 9 } },
+    buyLabel && { xAxis: buyLabel, lineStyle: { color: '#6a9aff', type: 'dashed', width: 1 }, label: { formatter: `买均 ${fmtPrice(flow.avgBuy)}`, color: '#6a9aff', fontSize: 9 } },
+    sellLabel && { xAxis: sellLabel, lineStyle: { color: '#ffb347', type: 'dashed', width: 1 }, label: { formatter: `卖均 ${fmtPrice(flow.avgSell)}`, color: '#ffb347', fontSize: 9 } }
+  ].filter(Boolean)
+  return {
+    tooltip: {
+      trigger: 'axis',
+      formatter(params) {
+        const title = params?.[0]?.axisValue || ''
+        const lines = (params || []).map((item) => `${item.marker}${item.seriesName} ${item.value}万`)
+        return `${title}<br/>${lines.join('<br/>')}`
+      }
+    },
+    legend: { ...legend, data: ['买入', '卖出'] },
+    grid: { left: '8%', right: '4%', top: '18%', bottom: '16%' },
+    xAxis: {
+      data: flow.labels || [],
+      axisLabel: { color: '#4a6080', fontSize: 8, rotate: 40 }
+    },
+    yAxis,
+    series: [
+      {
+        name: '买入',
+        type: 'bar',
+        data: flow.buy || [],
+        itemStyle: { color: '#6a9aff' },
+        barWidth: '28%',
+        markLine: { silent: true, symbol: 'none', data: markLines }
+      },
+      { name: '卖出', type: 'bar', data: flow.sell || [], itemStyle: { color: '#ffb347' }, barWidth: '28%' }
+    ]
+  }
+})
 
 const userOption = computed(() => ({
   tooltip: { trigger: 'axis' },
@@ -286,7 +328,7 @@ const tagOption = computed(() => ({
     data: (data.value?.tags || []).map((item) => ({
       value: item.users,
       name: item.name,
-      itemStyle: { color: item.color }
+      itemStyle: { color: namedHex(item.name) }
     })),
     label: { color: '#b0c8e8', fontSize: 10, formatter: '{b}\n{c}人' }
   }]
@@ -298,6 +340,13 @@ const tagOption = computed(() => ({
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+}
+.kpi-item.is-link {
+  cursor: pointer;
+}
+.kpi-item.is-link:hover {
+  border-color: var(--accent, #6a9aff);
+  background: var(--bg-kpi-hover);
 }
 .kpi-metrics {
   display: flex;

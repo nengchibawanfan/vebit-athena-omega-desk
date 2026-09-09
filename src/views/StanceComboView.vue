@@ -1,6 +1,6 @@
 <template>
   <div class="page">
-    <CollapsibleConfig class="config-bar" title="⚙️ 厚度与偏离配置" storage-key="ops-stance">
+    <CollapsibleConfig class="config-bar" title="⚙️ 价格台阶配置" storage-key="ops-stance">
       <template #extra>近端档位 / OBI / 偏离预警</template>
       <div class="group">
         <label>近端档位</label>
@@ -32,67 +32,87 @@
       <template v-if="data">
         <div class="card">
           <div class="card-header">
-            <span>📐 厚度与偏离</span>
-            <span class="badge">{{ currentCombo ? currentCombo.action : '对照表，当前没有落到组合上' }}</span>
+            <span>🪜 价格台阶</span>
+            <span class="badge">真实挂单 · 厚度 · 成本偏离</span>
           </div>
           <p class="blurb">
-            近端厚度：现价上下真实用户买量 − 卖量（剔除做市）。价格偏离：(现价 − 持仓均价) ÷ 均价。
-            厚度告诉你推价会撞到谁，偏离告诉你这批人想追还是想跑。
+            {{ ops.ladderBlurb || '现价到该档的真实挂单：往上是卖墙，往下是买墙。' }}
+            近端厚度看真实用户买量 − 卖量。偏离看现价相对持仓均价。
           </p>
           <div class="monitor-status">
-            <div class="status-item">
-              <span class="status-dot" :class="obi.kpis.alert ? 'red' : 'green'"></span>
-              厚度 {{ obi.kpis.realObiLabel }} · {{ obi.kpis.bias }}{{ obi.kpis.alert ? ' · 已触及预警' : ` · 距预警还差 ${obi.kpis.distToWarn}` }}
+            <div class="status-row">
+              <div class="status-item">
+                <span class="status-dot" :class="actionDot(ops.stance?.action)"></span>
+                现价 {{ ops.stance?.lastPrice || cost.kpis.lastPrice }}
+              </div>
             </div>
-            <div class="status-item">
-              <span class="status-dot" :class="cost.kpis.alert ? 'red' : cost.kpis.dev >= 0 ? 'yellow' : 'green'"></span>
-              偏离 {{ cost.kpis.devLabel }}% · 现价 {{ cost.kpis.lastPrice }} / 均价 {{ cost.kpis.avgCost }}{{ cost.kpis.alert ? ` · 已进压力区 ±${cost.kpis.warn}%` : '' }}
+            <div class="status-row">
+              <div class="status-item">
+                <span class="status-dot" :class="cost.kpis.alert ? 'red' : cost.kpis.dev >= 0 ? 'yellow' : 'green'"></span>
+                用户均价 {{ cost.kpis.avgCost }} · 偏离 {{ cost.kpis.devLabel }}%{{ cost.kpis.alert ? ` · 已进压力区 ±${cost.kpis.warn}%` : '' }}
+              </div>
             </div>
-            <div class="status-item">
-              <span class="status-dot yellow"></span>
-              买盘厚=砸价打到用户买单（你在卖出）；卖盘厚=拉价吃到用户卖单（高位买货）。正偏离=他们在赚；负偏离=他们在亏
+            <div class="status-row">
+              <div class="status-item">
+                <span class="status-dot" :class="Number(ops.stance?.mmDevPct) >= 0 ? 'green' : 'yellow'"></span>
+                做市库存成本 {{ fmtPrice(ops.stance?.mmCost) }} · 偏离 {{ signed(ops.stance?.mmDevPct) }}%
+              </div>
             </div>
           </div>
         </div>
 
         <div class="kpi-grid">
+          <div class="kpi-item" @click="$router.push('/desk/users')">
+            <div class="label">用户持有流通代币</div>
+            <div class="kpi-metrics">
+              <div class="value" style="color:#ffb347;">{{ fmtQty(ops.surfaceToken) }}<span class="unit">万</span></div>
+            </div>
+          </div>
           <div class="kpi-item">
-            <div class="label">真实 OBI</div>
+            <div class="label">+10% · {{ step10?.price }}</div>
+            <div class="kpi-metrics">
+              <div class="value" style="color:#ff5a7a;">{{ fmtQty(step10?.cumQty) }}<span class="unit">万</span></div>
+              <div class="qty">{{ fmtQty(step10?.cumU) }}<span class="unit">万USDT</span></div>
+            </div>
+            <div class="sub">现价到该档卖墙 · 真实挂单</div>
+          </div>
+          <div class="kpi-item">
+            <div class="label">-10% · {{ stepDown10?.price }}</div>
+            <div class="kpi-metrics">
+              <div class="value" style="color:#6a9aff;">{{ fmtQty(stepDown10?.cumQty) }}<span class="unit">万</span></div>
+              <div class="qty">{{ fmtQty(stepDown10?.cumU) }}<span class="unit">万USDT</span></div>
+            </div>
+            <div class="sub">现价到该档买墙 · 真实挂单</div>
+          </div>
+          <div class="kpi-item">
+            <div class="label">真实OBI</div>
             <div class="kpi-metrics">
               <div class="value" :style="{ color: obi.kpis.realObi >= 0 ? '#4cd9a0' : '#ff5a7a' }">{{ obi.kpis.realObiLabel }}</div>
               <div class="qty">含做市 {{ obi.kpis.grossObiLabel }}</div>
             </div>
-            <div class="sub">{{ obi.kpis.bias }}</div>
           </div>
-          <div class="kpi-item" @click="$router.push('/detail-orders')">
+          <div class="kpi-item" @click="$router.push('/desk/users/chips')">
+            <div class="label">持仓均价</div>
+            <div class="kpi-metrics">
+              <div class="value" style="color:#6a9aff;">{{ cost.kpis.avgCost }}</div>
+            </div>
+            <div class="sub">真实用户加权 · 点进筹码分布</div>
+          </div>
+          <div class="kpi-item" @click="$router.push('/orderbook')">
             <div class="label">近端买盘</div>
             <div class="kpi-metrics">
               <div class="value" style="color:#4cd9a0;">{{ fmtQty(obi.kpis.realBid) }}<span class="unit">万</span></div>
               <div class="qty">含做市 {{ fmtQty(obi.kpis.bidQty) }}</div>
             </div>
-            <div class="sub">前 {{ obi.kpis.levels }} 档 · 点进挂单明细</div>
+            <div class="sub">前 {{ obi.kpis.levels }} 档 · 点进盘面情况</div>
           </div>
-          <div class="kpi-item" @click="$router.push('/detail-orders')">
+          <div class="kpi-item" @click="$router.push('/orderbook')">
             <div class="label">近端卖盘</div>
             <div class="kpi-metrics">
               <div class="value" style="color:#ff5a7a;">{{ fmtQty(obi.kpis.realAsk) }}<span class="unit">万</span></div>
               <div class="qty">含做市 {{ fmtQty(obi.kpis.askQty) }}</div>
             </div>
-            <div class="sub">买/卖 {{ obi.kpis.bidAskRatio }}</div>
-          </div>
-          <div class="kpi-item">
-            <div class="label">现价</div>
-            <div class="kpi-metrics">
-              <div class="value">{{ cost.kpis.lastPrice }}</div>
-            </div>
-            <div class="sub">盘口现价</div>
-          </div>
-          <div class="kpi-item" @click="$router.push('/chips/user')">
-            <div class="label">持仓均价</div>
-            <div class="kpi-metrics">
-              <div class="value" style="color:#6a9aff;">{{ cost.kpis.avgCost }}</div>
-            </div>
-            <div class="sub">真实用户加权 · 点进持仓均价</div>
+            <div class="sub">前 {{ obi.kpis.levels }} 档 · 点进盘面情况</div>
           </div>
           <div class="kpi-item">
             <div class="label">价格偏离</div>
@@ -102,120 +122,78 @@
               </div>
               <div class="qty">浮盈 {{ cost.kpis.profitRatio }}% · 浮亏 {{ cost.kpis.underwater }}%</div>
             </div>
-            <div class="sub">{{ cost.kpis.stance }}</div>
           </div>
         </div>
 
         <div class="card">
           <div class="card-header">
-            <span>🧩 现在这一组</span>
-            <span class="badge">{{ currentCombo ? '已落到组合' : '未落到组合 · 对照下面四行' }}</span>
+            <span>📋 台阶明细</span>
+            <span class="badge">现价到该档真实挂单 · 上卖墙 / 下买墙</span>
           </div>
-          <div class="table-wrap">
-            <table>
+          <div class="table-wrap ladder-wrap">
+            <table class="ladder-table">
               <thead>
-                <tr><th>组合</th><th>盘面含义</th><th>动作</th></tr>
+                <tr>
+                  <th>台阶</th>
+                  <th>价格</th>
+                  <th class="num">真实挂单</th>
+                  <th class="num">金额</th>
+                  <th class="num">预估卖出</th>
+                  <th class="num">金额</th>
+                </tr>
               </thead>
               <tbody>
                 <tr
-                  v-for="row in combos"
-                  :key="row.id"
-                  :class="{ 'is-now': currentCombo?.id === row.id }"
+                  v-for="row in ladder"
+                  :key="row.pct"
+                  :class="{ 'is-blocked': row.playKind === 'no', 'is-spot': row.side === 'spot', 'is-up': row.side === 'up', 'is-down': row.side === 'down' }"
                 >
-                  <td>{{ row.scene }}</td>
-                  <td>{{ row.meaning }}</td>
-                  <td>{{ row.action }}</td>
+                  <td><div class="step-name">{{ row.label }}</div></td>
+                  <td class="step-price">{{ row.price }}</td>
+                  <td class="num" :style="{ color: row.side === 'up' ? '#ff5a7a' : row.side === 'down' ? '#6a9aff' : '' }">{{ fmtQty(row.cumQty) }}<span class="unit">万</span></td>
+                  <td class="num" :style="{ color: row.side === 'up' ? '#ff5a7a' : row.side === 'down' ? '#6a9aff' : '' }">{{ fmtQty(row.cumU) }}<span class="unit">万USDT</span></td>
+                  <td class="num flow-cell">
+                    <div class="cell-main" style="color:#ff5a7a;">{{ fmtQty(row.expectedSell) }}<span class="unit">万</span></div>
+                    <div v-if="sellBar(row).length" class="flow-bar is-sell">
+                      <div
+                        v-for="band in sellBar(row)"
+                        :key="band.key"
+                        class="flow-seg"
+                        :class="[band.kind, band.key]"
+                        :style="{ flex: Math.max(Number(band.sellPct) || 0, 1) }"
+                      >
+                        <span v-if="Number(band.sellPct) >= 10" class="flow-seg-pct">{{ band.sellPct }}%</span>
+                        <div class="flow-tip">
+                          <div class="tip-row"><span>盈亏范围</span>{{ band.label }}</div>
+                          <div class="tip-row"><span>占比</span>{{ band.sellPct }}%</div>
+                          <div class="tip-row"><span>数量</span>{{ fmtQty(band.sellAmt) }}万</div>
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="num" style="color:#ff5a7a;">{{ fmtQty(row.expectedSellU) }}<span class="unit">万USDT</span></td>
                 </tr>
               </tbody>
             </table>
           </div>
         </div>
 
-        <div class="grid-2">
-          <div class="card">
-            <div class="card-header">
-              <span>📈 今日真实 OBI</span>
-              <span class="badge">虚线 ±{{ obi.kpis.warn }} · 点线为含做市</span>
-            </div>
-            <ChartBox :option="intradayOption" />
+        <div class="card">
+          <div class="card-header">
+            <span>📈 近30日现价 vs 持仓均价</span>
+            <span class="badge">折线为偏离%</span>
           </div>
-          <div class="card">
-            <div class="card-header">
-              <span>📈 近30日现价 vs 持仓均价</span>
-              <span class="badge">折线为偏离%</span>
-            </div>
-            <ChartBox :option="trendOption" />
-          </div>
+          <ChartBox :option="trendOption" />
         </div>
 
-        <div class="grid-2">
-          <div class="card">
-            <div class="card-header"><span>🟢🔴 近端买 / 卖量</span><span class="badge">万枚 · 真实用户 · 分时</span></div>
-            <ChartBox :option="volumeOption" />
-          </div>
-          <div class="card">
-            <div class="card-header"><span>😰 浮盈 / 浮亏分层</span><span class="badge">真实用户持仓</span></div>
-            <ChartBox :option="bucketOption" />
-          </div>
+        <div class="card">
+          <div class="card-header"><span>😰 浮盈 / 浮亏分层</span><span class="badge">真实用户持仓</span></div>
+          <ChartBox :option="bucketOption" />
         </div>
 
-        <div class="grid-2">
-          <div class="card">
-            <div class="card-header"><span>🏔️ 成本带分布</span><span class="badge">柱为持仓量 · 虚线为均价附近</span></div>
-            <ChartBox :option="bandOption" />
-          </div>
-          <div class="card">
-            <div class="card-header"><span>📅 近14日真实 OBI</span><span class="badge">收盘口径</span></div>
-            <ChartBox :option="dayOption" />
-          </div>
-        </div>
-
-        <div class="grid-2">
-          <div class="card detail-table-card">
-            <div class="card-header">
-              <span>📋 近端档位厚度</span>
-              <span class="badge">前 {{ obi.depthRows.length }} 档 · 点进挂单明细</span>
-            </div>
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr><th>档</th><th>买价</th><th>买量(万)</th><th>卖价</th><th>卖量(万)</th><th>净买</th></tr>
-                </thead>
-                <tbody>
-                  <tr v-for="row in obi.depthRows" :key="row.level" class="row-link" @click="$router.push('/detail-orders')">
-                    <td>{{ row.level }}</td>
-                    <td>{{ row.bidPrice }}</td>
-                    <td>{{ row.bid }}</td>
-                    <td>{{ row.askPrice }}</td>
-                    <td>{{ row.ask }}</td>
-                    <td :style="{ color: row.net >= 0 ? '#4cd9a0' : '#ff5a7a' }">{{ row.net >= 0 ? '+' : '' }}{{ row.net }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-          <div class="card detail-table-card">
-            <div class="card-header">
-              <span>👥 样本持仓相对现价</span>
-              <span class="badge">点 UID 看持仓</span>
-            </div>
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr><th>用户ID</th><th>持仓(万)</th><th>成本</th><th>相对现价</th><th>分层</th></tr>
-                </thead>
-                <tbody>
-                  <tr v-for="row in cost.holders" :key="row.id" class="row-link" @click="$router.push(userDetailPath(row.id))">
-                    <td>{{ row.id }}</td>
-                    <td>{{ row.amount }}</td>
-                    <td>{{ row.cost }}</td>
-                    <td :style="{ color: row.pnlPct >= 0 ? '#4cd9a0' : '#ff5a7a' }">{{ row.pnlPct >= 0 ? '+' : '' }}{{ row.pnlPct }}%</td>
-                    <td><span class="tag" :class="row.bandTag">{{ row.band }}</span></td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
+        <div class="card">
+          <div class="card-header"><span>🏔️ 成本带分布</span><span class="badge">柱为持仓量 · 虚线为均价附近</span></div>
+          <ChartBox :option="bandOption" />
         </div>
       </template>
     </PageState>
@@ -226,52 +204,51 @@
 import { computed } from 'vue'
 import { api } from '@/api'
 import { appState, updateConfig } from '@/stores/app'
-import { userDetailPath } from '@/utils/uid'
 import { usePageData } from '@/composables/usePageData'
 import ChartBox from '@/components/ChartBox.vue'
 import PageState from '@/components/PageState.vue'
 import CollapsibleConfig from '@/components/CollapsibleConfig.vue'
-
-const COMBOS = [
-  { id: 'bid-low', scene: '买盘厚 + 偏离不高', meaning: '散户还愿意追，下方也有买单', action: '可拉，卖出：把货卖给追涨的人' },
-  { id: 'bid-high', scene: '买盘厚 + 偏离已经很高', meaning: '人人有利润，但买单还在', action: '停拉，先卖出兑现；下一步再砸盘买入' },
-  { id: 'ask-high', scene: '卖盘厚 + 偏离很高', meaning: '获利盘挂着等你来接', action: '别拉。拉等于高位买入，等他们砍' },
-  { id: 'ask-neg', scene: '卖盘厚 + 偏离为负', meaning: '套牢盘在出，你有货可买', action: '可砸，买入：用做市账户余额买回刚才卖掉的货' }
-]
+import { namedHex, actionDot } from '@/utils/palette'
 
 const { loading, error, data, bindPair, load } = usePageData(async () => {
-  const [obi, cost] = await Promise.all([
+  const [obi, cost, ops] = await Promise.all([
     api.getObiDetail(appState.currentPair, appState.config.depthLevels, appState.config.obiWarn),
-    api.getCostDev(appState.currentPair, appState.config.costDevWarn)
+    api.getCostDev(appState.currentPair, appState.config.costDevWarn),
+    api.getOpsDesk(appState.currentPair, appState.config.sleepIdleDays, appState.config.internalAccounts || [])
   ])
-  return { obi, cost }
+  return { obi, cost, ops }
 })
 bindPair()
 
 const obi = computed(() => data.value?.obi || { kpis: {}, history: {}, depthRows: [] })
 const cost = computed(() => data.value?.cost || { kpis: {}, history: {}, holders: [], buckets: [] })
-const combos = COMBOS
-
-const currentCombo = computed(() => {
-  const realObi = Number(obi.value.kpis?.realObi)
-  const dev = Number(cost.value.kpis?.dev)
-  const warn = Number(cost.value.kpis?.warn) || 20
-  if (!Number.isFinite(realObi) || !Number.isFinite(dev)) return null
-  const bidThick = realObi >= 0.15
-  const askThick = realObi <= -0.15
-  const devHigh = dev >= warn
-  const devNeg = dev < 0
-  if (askThick && devNeg) return COMBOS.find((row) => row.id === 'ask-neg')
-  if (askThick && devHigh) return COMBOS.find((row) => row.id === 'ask-high')
-  if (bidThick && devHigh) return COMBOS.find((row) => row.id === 'bid-high')
-  if (bidThick && !devHigh) return COMBOS.find((row) => row.id === 'bid-low')
-  return null
-})
+const ops = computed(() => data.value?.ops || { stance: {}, ladder: [], ladderBlurb: '' })
+const ladder = computed(() => ops.value.ladder || [])
+const step10 = computed(() => ladder.value.find((row) => row.pct === 10))
+const stepDown10 = computed(() => ladder.value.find((row) => row.pct === -10))
 
 function fmtQty(value) {
   const n = Number(value)
   if (Number.isNaN(n)) return '--'
   return n.toLocaleString('zh-CN', { maximumFractionDigits: 1 })
+}
+
+function sellBar(row) {
+  return (row?.sellBands || []).filter((band) => Number(band.sellAmt) > 0)
+}
+
+function signed(value) {
+  const n = Number(value)
+  if (Number.isNaN(n)) return '--'
+  return n > 0 ? `+${n}` : String(n)
+}
+
+function fmtPrice(value) {
+  const n = Number(value)
+  if (Number.isNaN(n)) return '--'
+  if (n >= 1000) return n.toLocaleString('zh-CN', { maximumFractionDigits: 2 })
+  if (n >= 1) return n.toLocaleString('zh-CN', { maximumFractionDigits: 4 })
+  return n.toLocaleString('zh-CN', { maximumFractionDigits: 6 })
 }
 
 function onDepthChange(event) {
@@ -298,73 +275,6 @@ function setDevWarn(value) {
 }
 
 const yAxis = { splitLine: { lineStyle: { color: '#111927' } }, axisLabel: { color: '#4a6080', fontSize: 8 } }
-const obiWarn = computed(() => Number(obi.value.kpis?.warn) || 0.4)
-
-const intradayOption = computed(() => ({
-  tooltip: { trigger: 'axis' },
-  legend: { data: ['真实 OBI', '含做市 OBI'], textStyle: { color: '#4a6080', fontSize: 10 }, top: 0 },
-  grid: { left: '8%', right: '4%', top: '16%', bottom: '14%' },
-  xAxis: { data: obi.value.history?.hours || [], axisLabel: { color: '#4a6080', fontSize: 8, interval: 1 } },
-  yAxis: { min: -0.7, max: 0.7, ...yAxis },
-  series: [
-    {
-      name: '真实 OBI',
-      type: 'line',
-      data: obi.value.history?.realSeries || [],
-      smooth: true,
-      lineStyle: { color: '#4cd9a0', width: 2 },
-      symbol: 'circle',
-      symbolSize: 4,
-      markLine: {
-        silent: true,
-        data: [{ yAxis: obiWarn.value }, { yAxis: -obiWarn.value }, { yAxis: 0 }],
-        lineStyle: { color: '#ffb347', type: 'dashed' },
-        label: { color: '#ffb347', fontSize: 8 }
-      }
-    },
-    {
-      name: '含做市 OBI',
-      type: 'line',
-      data: obi.value.history?.grossSeries || [],
-      smooth: true,
-      lineStyle: { color: '#6a9aff', width: 1.5, type: 'dotted' },
-      symbol: 'none'
-    }
-  ]
-}))
-
-const volumeOption = computed(() => ({
-  tooltip: { trigger: 'axis' },
-  legend: { data: ['买盘', '卖盘'], textStyle: { color: '#4a6080', fontSize: 9 }, top: 0 },
-  grid: { left: '8%', right: '4%', top: '16%', bottom: '14%' },
-  xAxis: { data: obi.value.history?.hours || [], axisLabel: { color: '#4a6080', fontSize: 8, interval: 3 } },
-  yAxis,
-  series: [
-    { name: '买盘', type: 'bar', data: obi.value.history?.bidSeries || [], itemStyle: { color: 'rgba(76,217,160,0.8)' }, barWidth: '32%' },
-    { name: '卖盘', type: 'bar', data: obi.value.history?.askSeries || [], itemStyle: { color: 'rgba(255,90,122,0.8)' }, barWidth: '32%' }
-  ]
-}))
-
-const dayOption = computed(() => ({
-  tooltip: { trigger: 'axis' },
-  grid: { left: '8%', right: '4%', top: '10%', bottom: '16%' },
-  xAxis: { data: obi.value.history?.dayLabels || [], axisLabel: { color: '#4a6080', fontSize: 8, rotate: 40 } },
-  yAxis: { min: -0.6, max: 0.65, ...yAxis },
-  series: [{
-    type: 'line',
-    data: obi.value.history?.dayObi || [],
-    smooth: true,
-    lineStyle: { color: '#4a8aff', width: 2 },
-    areaStyle: { color: 'rgba(74,138,255,0.15)' },
-    symbol: 'circle',
-    symbolSize: 5,
-    markLine: {
-      silent: true,
-      data: [{ yAxis: 0 }],
-      lineStyle: { color: '#4a6080', type: 'dashed' }
-    }
-  }]
-}))
 
 const trendOption = computed(() => {
   const history = cost.value.history
@@ -418,7 +328,7 @@ const bucketOption = computed(() => ({
     data: (cost.value.buckets || []).map((item) => ({
       name: item.name,
       value: item.amount,
-      itemStyle: { color: item.color }
+      itemStyle: { color: namedHex(item.name) }
     })),
     label: { color: '#b0c8e8', fontSize: 9, formatter: '{b}\n{d}%' },
     labelLine: { lineStyle: { color: '#2a3a5a' } }
@@ -433,10 +343,27 @@ const bucketOption = computed(() => ({
   line-height: 1.6;
   color: #9ab0cc;
 }
+.monitor-status {
+  flex-direction: column;
+  gap: 4px;
+}
+.status-row {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
 .kpi-item {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+}
+.kpi-grid {
+  grid-template-columns: repeat(4, 1fr);
+}
+@media (max-width: 1024px) {
+  .kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 .kpi-metrics {
   display: flex;
@@ -457,18 +384,149 @@ const bucketOption = computed(() => ({
   color: var(--text-soft);
   font-weight: 400;
 }
-.row-link {
-  cursor: pointer;
-}
-.row-link:hover td {
-  color: #f0f6ff;
-}
 .config-bar .btn-sm {
   margin-right: 6px;
 }
-tr.is-now td {
-  background: rgba(76, 217, 160, 0.1);
-  color: #f0f6ff;
+.is-blocked td {
+  color: #d8c8a8;
+}
+.is-spot td {
   font-weight: 600;
+}
+.step-name {
+  font-weight: 700;
+}
+.is-up .step-name {
+  color: #ffb347;
+}
+.is-down .step-name {
+  color: #6a9aff;
+}
+.step-price {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-title, #e8f0ff);
+}
+.is-spot .step-price {
+  color: #4cd9a0;
+}
+.ladder-table th.num,
+.ladder-table td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.ladder-table td .unit {
+  margin-left: 2px;
+  font-size: 10px;
+  color: var(--text-soft);
+  font-weight: 400;
+}
+.ladder-table tbody tr.is-spot {
+  background: rgba(76, 217, 160, 0.06);
+}
+.ladder-wrap {
+  overflow: visible;
+}
+.flow-cell {
+  min-width: 220px;
+  padding-bottom: 8px;
+}
+.flow-cell .cell-main {
+  font-weight: 700;
+}
+.flow-bar {
+  display: flex;
+  width: 100%;
+  height: 20px;
+  margin-top: 6px;
+  overflow: visible;
+  border-radius: 5px;
+}
+.flow-bar.is-sell {
+  background: rgba(255, 90, 122, 0.1);
+}
+.flow-seg {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 4px;
+  height: 100%;
+  cursor: default;
+}
+.flow-seg + .flow-seg {
+  box-shadow: inset 1px 0 0 rgba(8, 14, 24, 0.35);
+}
+.flow-seg:first-child {
+  border-radius: 5px 0 0 5px;
+}
+.flow-seg:last-child {
+  border-radius: 0 5px 5px 0;
+}
+.flow-seg:only-child {
+  border-radius: 5px;
+}
+.flow-seg.profit.p20 { background: #ff5a7a; }
+.flow-seg.profit.p10 { background: #ff7a94; }
+.flow-seg.profit.p5 { background: #d96a80; }
+.flow-seg.profit.p0 { background: #c45d72; }
+.flow-seg.loss.l0 { background: #8eb0ff; }
+.flow-seg.loss.l5 { background: #6a9aff; }
+.flow-seg.loss.l10 { background: #547fe0; }
+.flow-seg.loss.l20 { background: #3d63b8; }
+.flow-seg:hover {
+  filter: brightness(1.12);
+  z-index: 3;
+}
+.flow-seg-pct {
+  font-size: 9px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+.flow-tip {
+  display: none;
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 8px);
+  z-index: 8;
+  min-width: 148px;
+  padding: 8px 10px;
+  border: 1px solid #c5d3e8;
+  border-radius: 8px;
+  background: #f4f7fc;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
+  transform: translateX(-50%);
+  text-align: left;
+  white-space: nowrap;
+  font-size: 11px;
+  line-height: 1.55;
+  font-weight: 400;
+  color: #121a2c;
+}
+.flow-tip .tip-row {
+  display: flex;
+  gap: 10px;
+}
+.flow-tip .tip-row span {
+  width: 56px;
+  color: #5a6e8a;
+  font-weight: 400;
+}
+[data-theme="light"] .flow-tip {
+  background: #1b2740;
+  border-color: #3a5a8a;
+  box-shadow: 0 10px 24px rgba(24, 36, 56, 0.28);
+  color: #f0f6ff;
+}
+[data-theme="light"] .flow-tip .tip-row span {
+  color: #9ab0cc;
+}
+.flow-seg:hover .flow-tip {
+  display: block;
 }
 </style>

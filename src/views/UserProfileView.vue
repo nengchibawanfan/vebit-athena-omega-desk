@@ -21,14 +21,14 @@
           v-for="tag in data.tags"
           :key="tag.name"
           class="card clickable persona-card"
-          :style="{ borderColor: tag.color }"
+          :style="{ borderColor: personaHex(tag.key || tag.name) }"
           @click="$router.push(tag.to)"
         >
           <div class="card-header">
             <span>🏷️ {{ tag.name }}</span>
             <span class="badge">进入</span>
           </div>
-          <div class="persona-value" :style="{ color: tag.color }">
+          <div class="persona-value" :style="{ color: personaHex(tag.key || tag.name) }">
             {{ tag.value }}<span class="unit">人</span>
           </div>
           <div class="sub">占比 {{ tag.ratio }}</div>
@@ -63,7 +63,7 @@
               <tr><th>用户ID</th><th>注册时间</th><th>交易笔数</th><th>胜率</th><th>盈亏比</th><th>标签</th></tr>
             </thead>
             <tbody>
-              <tr v-for="row in data.users" :key="row.id" class="row-link" @click="$router.push(userDetailPath(row.id))">
+              <tr v-for="row in userPager.pagedRows" :key="row.id" class="row-link" @click="$router.push(userDetailPath(row.id))">
                 <td>{{ row.id }}</td>
                 <td>{{ row.registered }}</td>
                 <td>{{ row.trades }}</td>
@@ -76,6 +76,13 @@
             </tbody>
           </table>
         </div>
+        <TablePager
+          v-model:page="userPager.page"
+          v-model:page-size="userPager.pageSize"
+          :page-count="userPager.pageCount"
+          :total="userPager.total"
+          :range-text="userPager.rangeText"
+        />
       </div>
     </div>
   </PageState>
@@ -87,13 +94,18 @@ import { useRouter } from 'vue-router'
 import { api } from '@/api'
 import { userDetailPath } from '@/utils/uid'
 import { usePageData } from '@/composables/usePageData'
+import { usePager } from '@/composables/usePager'
 import ChartBox from '@/components/ChartBox.vue'
 import PageState from '@/components/PageState.vue'
+import TablePager from '@/components/TablePager.vue'
+import { personaHex } from '@/utils/palette'
 
 const router = useRouter()
 const { loading, error, data, load } = usePageData(() => api.getUserProfile())
 
 onMounted(load)
+
+const userPager = usePager(computed(() => data.value?.users || []))
 
 function pathForName(name) {
   const label = name === '程序化' ? '程序化交易' : name
@@ -113,7 +125,7 @@ const pieOption = computed(() => ({
     data: (data.value?.tags || []).map((tag) => ({
       value: tag.value,
       name: tag.name,
-      itemStyle: { color: tag.color }
+      itemStyle: { color: personaHex(tag.key || tag.name) }
     })),
     label: { color: '#b0c8e8', fontSize: 10, formatter: '{b}\n{d}%' },
     labelLine: { lineStyle: { color: '#2a3a5a' } }

@@ -9,11 +9,7 @@
             <span class="badge">做市账户 · 部分可能是从用户借入的虚增</span>
           </div>
         </div>
-        <div class="monitor-status">
-          <div v-for="item in data.status" :key="item.text" class="status-item">
-            <span class="status-dot" :class="item.color"></span> {{ item.text }}
-          </div>
-        </div>
+        <StatusStrip :items="data.status" />
       </div>
 
       <div class="kpi-grid">
@@ -175,6 +171,7 @@ import { appState } from '@/stores/app'
 import { usePageData } from '@/composables/usePageData'
 import ChartBox from '@/components/ChartBox.vue'
 import PageState from '@/components/PageState.vue'
+import StatusStrip from '@/components/StatusStrip.vue'
 
 const { loading, error, data, bindPair } = usePageData(() =>
   api.getRobotStatus(appState.currentPair, appState.config.internalAccounts || [], appState.config.robot)

@@ -77,7 +77,7 @@
             </div>
             <div class="sub">{{ data.kpis.ownedSub }}</div>
           </div>
-          <div class="kpi-item" @click="$router.push('/desk/mm')">
+          <div class="kpi-item" @click="$router.push('/ops/dump')">
             <div class="label">做市账户</div>
             <div class="kpi-metrics">
               <div class="value" :style="{ color: bandColor }">{{ fmtQty(data.kpis.dumpable) }}<span class="unit">万</span></div>

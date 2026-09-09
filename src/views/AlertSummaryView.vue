@@ -4,14 +4,10 @@
       <template v-if="data">
         <div class="card">
           <div class="card-header">
-            <span>🚨 操盘警报</span>
+            <span>🚨 报警</span>
             <span class="badge">全站待处理 {{ data.kpis.pending }}</span>
           </div>
-          <div class="monitor-status">
-            <div v-for="item in data.status" :key="item.text" class="status-item">
-              <span class="status-dot" :class="item.color"></span> {{ item.text }}
-            </div>
-          </div>
+          <StatusStrip :items="data.status" />
         </div>
 
         <div class="kpi-grid">
@@ -71,10 +67,10 @@
                 :class="{ primary: sourceFilter === src }"
                 @click="sourceFilter = src"
               >{{ src }}</button>
-              <span class="badge">{{ visibleRows.length }} 条</span>
+              <span class="badge">{{ alertPager.total }} 条</span>
             </div>
           </div>
-          <div v-if="!visibleRows.length" class="empty-alerts">当前筛选下没有警报</div>
+          <div v-if="!alertPager.total" class="empty-alerts">当前筛选下没有警报</div>
           <div v-else class="table-wrap">
             <table>
               <thead>
@@ -88,7 +84,7 @@
               </thead>
               <tbody>
                 <tr
-                  v-for="row in visibleRows"
+                  v-for="row in alertPager.pagedRows"
                   :key="row.id"
                   class="row-link"
                   @click="$router.push(row.to)"
@@ -96,7 +92,7 @@
                   <td>{{ row.time }}</td>
                   <td>
                     <span class="alert-level">
-                      <span class="status-dot" :style="{ background: row.color, boxShadow: 'none' }"></span>
+                      <span class="status-dot" :class="alertLevelDot(row.level)"></span>
                       {{ row.level }}
                     </span>
                   </td>
@@ -107,6 +103,13 @@
               </tbody>
             </table>
           </div>
+          <TablePager
+            v-model:page="alertPager.page"
+            v-model:page-size="alertPager.pageSize"
+            :page-count="alertPager.pageCount"
+            :total="alertPager.total"
+            :range-text="alertPager.rangeText"
+          />
         </div>
       </template>
     </PageState>
@@ -118,8 +121,12 @@ import { computed, ref } from 'vue'
 import { api } from '@/api'
 import { appState } from '@/stores/app'
 import { usePageData } from '@/composables/usePageData'
+import { usePager } from '@/composables/usePager'
 import ChartBox from '@/components/ChartBox.vue'
 import PageState from '@/components/PageState.vue'
+import StatusStrip from '@/components/StatusStrip.vue'
+import TablePager from '@/components/TablePager.vue'
+import { alertLevelDot, namedHex } from '@/utils/palette'
 
 const levelFilter = ref('all')
 const sourceFilter = ref('全部')
@@ -153,6 +160,7 @@ const visibleRows = computed(() => {
     return true
   })
 })
+const alertPager = usePager(visibleRows)
 
 const levelOption = computed(() => ({
   tooltip: { trigger: 'item' },
@@ -162,7 +170,7 @@ const levelOption = computed(() => ({
     data: (data.value?.byLevel || []).map((item) => ({
       name: item.name,
       value: item.value,
-      itemStyle: { color: item.color }
+      itemStyle: { color: namedHex(item.name) }
     })),
     label: { color: '#b0c8e8', fontSize: 10, formatter: '{b}\n{c}' }
   }]
@@ -173,10 +181,10 @@ const sourceOption = computed(() => ({
   series: [{
     type: 'pie',
     radius: ['42%', '68%'],
-    data: (data.value?.bySource || []).map((item) => ({
+    data: (data.value?.bySource || []).map((item, index) => ({
       name: item.name,
       value: item.value,
-      itemStyle: { color: item.color }
+      itemStyle: { color: namedHex(item.name, index) }
     })),
     label: { color: '#b0c8e8', fontSize: 10, formatter: '{b}\n{c}' }
   }]

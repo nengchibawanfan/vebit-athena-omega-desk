@@ -17,15 +17,10 @@
             <div class="header-tools">
               <router-link v-if="!isToday" class="inline-link" to="/whales/exchange">看今日</router-link>
               <router-link class="inline-link" to="/whales/exchange/history">历史充提</router-link>
-              <router-link class="inline-link" to="/circ/onchain">链上仓库</router-link>
               <span class="badge">{{ isToday ? '所内可卖供给' : `${data.dateLabel} · 所内可卖供给` }}</span>
             </div>
           </div>
-          <div class="monitor-status">
-            <div v-for="item in data.status" :key="item.text" class="status-item">
-              <span class="status-dot" :class="item.color"></span> {{ item.text }}
-            </div>
-          </div>
+          <StatusStrip :items="data.status" />
           <p class="blurb">
             充值进所 = 可卖供给增加；提现出金 = 货离开唯一市场。
           </p>
@@ -96,19 +91,38 @@
             <div class="card-header"><span>📉 净充提</span><span class="badge">充 − 提</span></div>
             <ChartBox :option="netOption" />
           </div>
-          <div class="card">
+          <div
+            class="card largest-card"
+            :class="{ clickable: hasLargest }"
+            @click="openLargest"
+          >
             <div class="card-header">
               <span>🏆 单笔最大</span>
-              <span class="badge">{{ data.kpis.largestAction }} {{ fmtQty(data.kpis.largestAmt) }}万</span>
+              <span v-if="hasLargest" class="tag" :class="data.kpis.largestAction === '充值' ? 'alert' : 'success'">
+                {{ data.kpis.largestAction }}
+              </span>
             </div>
-            <div class="largest-box">
-              <div class="largest-uid">UID {{ data.kpis.largestUid }}</div>
-              <div class="largest-amt" :class="data.kpis.largestAction === '充值' ? 'amt-deposit' : 'amt-withdraw'">
-                {{ data.kpis.largestAction }} {{ fmtQty(data.kpis.largestAmt) }}<span class="unit">万</span>
+            <div v-if="hasLargest" class="largest-box">
+              <div class="largest-top">
+                <div>
+                  <div class="largest-kicker">UID {{ data.kpis.largestUid }}</div>
+                  <div class="largest-amt" :class="data.kpis.largestAction === '充值' ? 'amt-deposit' : 'amt-withdraw'">
+                    {{ fmtQty(data.kpis.largestAmt) }}<span class="unit">万</span>
+                  </div>
+                  <div class="qty">{{ fmtQty(data.kpis.largestU) }}<span class="unit">万USDT</span></div>
+                </div>
+                <span v-if="data.kpis.largestTag" class="tag" :class="data.kpis.largestTagClass">{{ data.kpis.largestTag }}</span>
               </div>
-              <p class="largest-note">{{ data.kpis.largestAction === '充值' ? '这笔进所后，盘口可卖供给增加。' : '这笔离场后，货回到链上仓库。' }}</p>
-              <router-link class="inline-link" :to="userDetailPath(data.kpis.largestUid)">看这个 UID</router-link>
+              <div class="largest-rows">
+                <div><span>时间</span><strong>{{ data.kpis.largestTime }}</strong></div>
+                <div><span>网络</span><strong>{{ data.kpis.largestChain }}</strong></div>
+                <div>
+                  <span>状态</span>
+                  <span class="tag" :class="data.kpis.largestStatusTag">{{ data.kpis.largestStatus }}</span>
+                </div>
+              </div>
             </div>
+            <div v-else class="largest-empty">当日无超阈值充提</div>
           </div>
         </div>
 
@@ -168,7 +182,7 @@
         <div class="card detail-table-card">
           <div class="card-header">
             <span>📋 充提明细</span>
-            <span class="badge">{{ data.rows.length }} 笔 · 点 UID</span>
+            <span class="badge">{{ transferPager.total }} 笔 · 点 UID</span>
           </div>
           <div class="table-wrap">
             <table>
@@ -187,7 +201,7 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="row in data.rows" :key="row.uid + row.time + row.action" class="row-link" @click="$router.push(userDetailPath(row.uid))">
+                <tr v-for="row in transferPager.pagedRows" :key="row.uid + row.time + row.action" class="row-link" @click="$router.push(userDetailPath(row.uid))">
                   <td>{{ row.time }}</td>
                   <td>{{ row.uid }}</td>
                   <td><span class="tag" :class="row.tagClass">{{ row.tag }}</span></td>
@@ -202,6 +216,13 @@
               </tbody>
             </table>
           </div>
+          <TablePager
+            v-model:page="transferPager.page"
+            v-model:page-size="transferPager.pageSize"
+            :page-count="transferPager.pageCount"
+            :total="transferPager.total"
+            :range-text="transferPager.rangeText"
+          />
         </div>
       </template>
     </PageState>
@@ -210,17 +231,21 @@
 
 <script setup>
 import { computed, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { api } from '@/api'
 import { appState, updateConfig } from '@/stores/app'
 import { userDetailPath } from '@/utils/uid'
 import { usePageData } from '@/composables/usePageData'
+import { usePager } from '@/composables/usePager'
 import ChartBox from '@/components/ChartBox.vue'
 import PageState from '@/components/PageState.vue'
 import CollapsibleConfig from '@/components/CollapsibleConfig.vue'
+import StatusStrip from '@/components/StatusStrip.vue'
 import CopyAddr from '@/components/CopyAddr.vue'
+import TablePager from '@/components/TablePager.vue'
 
 const route = useRoute()
+const router = useRouter()
 const dayDate = computed(() => (typeof route.query.date === 'string' ? route.query.date : ''))
 const { loading, error, data, bindPair, load } = usePageData(() =>
   api.getTransferToday(
@@ -233,11 +258,22 @@ const { loading, error, data, bindPair, load } = usePageData(() =>
 bindPair()
 watch(dayDate, () => load())
 
+const transferPager = usePager(computed(() => data.value?.rows || []))
+
 const isToday = computed(() => data.value?.isToday !== false)
 const dayWord = computed(() => (isToday.value ? '今日' : '当日'))
 const pageTitle = computed(() => (
   isToday.value ? '今日充提' : `${data.value?.dateTitle || '当日'}充提`
 ))
+const hasLargest = computed(() => {
+  const uid = data.value?.kpis?.largestUid
+  return Boolean(uid && uid !== '—')
+})
+
+function openLargest() {
+  if (!hasLargest.value) return
+  router.push(userDetailPath(data.value.kpis.largestUid))
+}
 
 function onWhaleChange(event) {
   updateConfig({ whaleThreshold: Number(event.target.value) })
@@ -353,28 +389,71 @@ const netOption = computed(() => ({
 .row-link:hover td {
   color: var(--text-title);
 }
-.largest-box {
-  padding: 18px 16px 16px;
+.largest-card.clickable {
+  cursor: pointer;
 }
-.largest-uid {
-  font-size: 12px;
+.largest-box {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 148px;
+  padding: 12px 14px 14px;
+  gap: 14px;
+}
+.largest-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+.largest-kicker {
+  font-size: 11px;
   color: var(--text-soft);
+  font-variant-numeric: tabular-nums;
 }
 .largest-amt {
-  font-size: 28px;
+  font-size: 22px;
   font-weight: 700;
-  margin-top: 6px;
+  margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
 }
 .largest-amt .unit {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 400;
   margin-left: 4px;
   color: var(--text-soft);
 }
-.largest-note {
-  margin: 10px 0 8px;
+.largest-rows {
+  display: grid;
+  gap: 0;
+}
+.largest-rows > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   font-size: 12px;
-  color: var(--text-body);
-  line-height: 1.5;
+  border-top: 1px solid var(--border-row);
+  padding: 8px 0 0;
+  margin-top: 8px;
+}
+.largest-rows > div:first-child {
+  margin-top: 0;
+}
+.largest-rows span:first-child {
+  color: var(--text-muted);
+}
+.largest-rows strong {
+  font-weight: 600;
+  color: var(--text-title);
+  font-variant-numeric: tabular-nums;
+}
+.largest-empty {
+  min-height: 148px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-soft);
+  font-size: 12px;
 }
 </style>

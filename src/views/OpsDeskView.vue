@@ -7,22 +7,14 @@
             <span>{{ header.title }}</span>
             <span class="badge">{{ header.badge }}</span>
           </div>
-          <p v-if="kind === 'ladder'" class="blurb">{{ data.ladderBlurb }}</p>
-          <p v-else-if="kind === 'dump'" class="blurb">
-            做市账户{{ dumpIsToday ? '今日' : data.dump.dateLabel }}卖出 / 买入。用户买你就卖，用户卖你就买。
+          <p class="blurb">
+            做市账户{{ dumpIsToday ? '今日' : data.dump.dateLabel }}卖出 / 买入，以及库存和余额。
             <router-link v-if="!dumpIsToday" class="inline-link" to="/ops/dump">看今日</router-link>
-            <router-link class="inline-link" to="/ops/dump/history">历史交易情况</router-link>
-            <router-link class="inline-link" to="/desk/mm">今日资产情况</router-link>
+            <router-link class="inline-link" to="/ops/dump/history">历史</router-link>
           </p>
-          <p v-else-if="kind === 'absorb'" class="blurb">
-            真实用户所内 USDT 和代币。不含做市 / 金库等。
-            <router-link v-if="!absorbIsToday" class="inline-link" to="/ops/absorb">看今日</router-link>
-            <router-link class="inline-link" to="/ops/absorb/history">历史资产情况</router-link>
-            <router-link class="inline-link" to="/desk/users">今日交易情况</router-link>
-          </p>
-          <div v-if="kind !== 'absorb'" class="monitor-status">
+          <div class="monitor-status">
             <div class="status-item">
-              <span class="status-dot" :class="data.stance.actionColor"></span>
+              <span class="status-dot" :class="actionDot(data.stance.action)"></span>
               现价 {{ data.stance.lastPrice }}
             </div>
             <div class="status-item">
@@ -36,68 +28,22 @@
           </div>
         </div>
 
-        <template v-if="kind === 'dump'">
-          <div class="kpi-grid">
-            <div class="kpi-item" @click="$router.push('/desk/mm')">
-              <div class="label">{{ dumpWord }}卖出</div>
-              <div class="kpi-metrics">
-                <div class="value" style="color:#ff5a7a;">{{ fmtQty(data.dump.sellHigh) }}<span class="unit">万</span></div>
-                <div class="qty">收回 {{ fmtQty(data.dump.usdtIn30) }}<span class="unit">万USDT</span></div>
-              </div>
-              <div class="sub">均卖 {{ data.dump.avgSell }} · 均卖比均买高 {{ data.dump.spreadPct }}%</div>
-            </div>
-            <div class="kpi-item" @click="$router.push('/desk/mm')">
-              <div class="label">{{ dumpWord }}买入</div>
-              <div class="kpi-metrics">
-                <div class="value" style="color:#6a9aff;">{{ fmtQty(data.dump.buyLow) }}<span class="unit">万</span></div>
-                <div class="qty">花出 {{ fmtQty(data.dump.usdtOut30) }}<span class="unit">万USDT</span></div>
-              </div>
-              <div class="sub">均买 {{ data.dump.avgBuy }} · 用户在卖</div>
-            </div>
+        <div class="kpi-grid mm-kpis">
             <div class="kpi-item">
-              <div class="label">代币净变动</div>
-              <div class="kpi-metrics">
-                <div class="value" :style="{ color: Math.abs(Number(data.dump.tokenDelta) || 0) < Math.abs(Number(data.dump.dumpable) || 1) * 0.08 ? '#4cd9a0' : '#ffb347' }">
-                  {{ signedQty(data.dump.tokenDelta) }}<span class="unit">万</span>
-                </div>
-              </div>
-              <div class="sub">买入 − 卖出</div>
-            </div>
-            <div class="kpi-item">
-              <div class="label">USDT 净增加</div>
-              <div class="kpi-metrics">
-                <div class="value" :style="{ color: Number(data.dump.usdtNet30) >= 0 ? '#4cd9a0' : '#ff5a7a' }">
-                  {{ signedQty(data.dump.usdtNet30) }}<span class="unit">万USDT</span>
-                </div>
-              </div>
-              <div class="sub">收回 USDT − 花出 USDT</div>
-            </div>
-            <div class="kpi-item" @click="$router.push('/desk/mm')">
               <div class="label">{{ pairBase }}余额</div>
               <div class="kpi-metrics">
                 <div class="value" style="color:#a78bfa;">{{ fmtQty(data.dump.dumpable) }}<span class="unit">万{{ pairBase }}</span></div>
                 <div class="qty">自有 {{ fmtQty(data.dump.tokenOwn) }} · 借入虚增 {{ fmtQty(data.dump.tokenBorrowed) }}</div>
               </div>
-              <div class="sub">做市账户库存 · 卖出用的货</div>
             </div>
-            <div class="kpi-item" @click="$router.push('/desk/mm')">
+            <div class="kpi-item">
               <div class="label">{{ pairQuote }}余额</div>
               <div class="kpi-metrics">
                 <div class="value" :style="{ color: Number(data.dump.ownUsdt) >= 0 ? '#4cd9a0' : '#ff5a7a' }">
                   {{ signedQty(data.dump.ownUsdt) }}<span class="unit">万{{ pairQuote }}</span>
                 </div>
-                <div class="qty">真实 {{ signedQty(data.dump.cashTrueU) }} · 借入 {{ fmtQty(data.dump.cashBorrowedU) }}</div>
+                <div class="qty">自有 {{ fmtQty(data.dump.cashTrueU) }} · 借入虚增 {{ fmtQty(data.dump.cashBorrowedU) }}</div>
               </div>
-              <div class="sub">真实余额 + 借入金额 · 买入用的钱</div>
-            </div>
-          </div>
-          <div class="kpi-grid">
-            <div class="kpi-item">
-              <div class="label">对倒量</div>
-              <div class="kpi-metrics">
-                <div class="value">{{ fmtQty(data.dump.matched) }}<span class="unit">万</span></div>
-              </div>
-              <div class="sub">{{ dumpWord }}买卖重叠的部分</div>
             </div>
             <div class="kpi-item">
               <div class="label">交易盈亏</div>
@@ -126,38 +72,109 @@
               </div>
               <div class="sub">交易盈亏 + 存货浮盈</div>
             </div>
-            <div class="kpi-item">
-              <div class="label">均卖比均买高</div>
-              <div class="kpi-metrics">
-                <div class="value" style="color:#ffb347;">{{ data.dump.spreadPct }}<span class="unit">%</span></div>
-              </div>
-              <div class="sub">(均卖 − 均买) ÷ 均买</div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <span>🏦 做市账户明细</span>
+              <span class="badge">{{ (data.mmToday?.accounts || []).length }} 个 UID</span>
             </div>
-            <div class="kpi-item">
-              <div class="label">平均价格</div>
-              <div class="kpi-metrics">
-                <div class="value">{{ data.dump.avgNetPrice == null ? '--' : data.dump.avgNetPrice }}</div>
-              </div>
-              <div class="sub">USDT 净增加 ÷ 代币净变动</div>
+            <div v-if="!(data.mmToday?.accounts || []).length" class="empty-hint">还没有配置做市账户 UID，请到机器人配置里添加。</div>
+            <div v-else class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>UID</th>
+                    <th>备注</th>
+                    <th>状态</th>
+                    <th>代币自有</th>
+                    <th>代币借入</th>
+                    <th>做市账户余额</th>
+                    <th>真实余额</th>
+                    <th>借入金额</th>
+                    <th>{{ dumpWord }}买(万)</th>
+                    <th>{{ dumpWord }}卖(万)</th>
+                    <th>净买入</th>
+                    <th>交易盈亏</th>
+                    <th>浮盈</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="row in data.mmToday.accounts" :key="row.uid">
+                    <td>{{ row.uid }}</td>
+                    <td>{{ row.remark }}</td>
+                    <td><span class="tag" :class="row.statusTag">{{ row.status }}</span></td>
+                    <td>{{ fmtQty(row.tokenOwn) }}</td>
+                    <td>{{ fmtQty(row.tokenBorrowed) }}</td>
+                    <td :style="{ color: Number(row.cashU) >= 0 ? '#4cd9a0' : '#ff5a7a' }">{{ signedQty(row.cashU) }}</td>
+                    <td :style="{ color: Number(row.cashTrueU) >= 0 ? '#4cd9a0' : '#ff5a7a' }">{{ signedQty(row.cashTrueU) }}</td>
+                    <td>{{ fmtQty(row.cashBorrowedU) }}</td>
+                    <td>{{ fmtQty(row.buyFill) }}</td>
+                    <td>{{ fmtQty(row.sellFill) }}</td>
+                    <td :style="{ color: row.netQty >= 0 ? '#6a9aff' : '#ffb347' }">{{ signedQty(row.netQty) }}</td>
+                    <td>{{ signedQty(row.realizedU) }}</td>
+                    <td>{{ signedQty(row.floatU) }}</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
           <div class="grid-2">
             <div class="card">
               <div class="card-header">
-                <span>📤 {{ dumpWord }}拆腿</span>
+                <span>📤 交易情况</span>
                 <span class="badge">均卖 {{ data.dump.avgSell }} · 均买 {{ data.dump.avgBuy }}</span>
               </div>
               <div class="trade-board">
                 <div class="trade-legs">
                   <div class="trade-leg is-sell">
                     <div class="mini-label">卖出</div>
-                    <div class="mini-value">{{ fmtQty(data.dump.sellHigh) }}<span>万</span></div>
-                    <div class="mini-sub">收回 {{ fmtQty(data.dump.usdtIn30) }}万USDT · 均价 {{ data.dump.avgSell }}</div>
+                    <div class="leg-metrics">
+                      <div class="leg-row">
+                        <span>数量</span>
+                        <strong>{{ fmtQty(data.dump.sellHigh) }}<em>万</em></strong>
+                      </div>
+                      <div class="leg-row">
+                        <span>金额</span>
+                        <strong>{{ fmtQty(data.dump.usdtIn30) }}<em>万USDT</em></strong>
+                      </div>
+                      <div class="leg-row">
+                        <span>均价</span>
+                        <strong>{{ fmtPrice(data.dump.avgSell) }}</strong>
+                      </div>
+                      <div class="leg-row">
+                        <span>人数</span>
+                        <strong>{{ data.dump.sellUsers }}<em>人</em></strong>
+                      </div>
+                      <div class="leg-row">
+                        <span>笔数</span>
+                        <strong>{{ data.dump.sellFills }}<em>笔</em></strong>
+                      </div>
+                    </div>
                   </div>
                   <div class="trade-leg is-buy">
                     <div class="mini-label">买入</div>
-                    <div class="mini-value">{{ fmtQty(data.dump.buyLow) }}<span>万</span></div>
-                    <div class="mini-sub">花出 {{ fmtQty(data.dump.usdtOut30) }}万USDT · 均价 {{ data.dump.avgBuy }}</div>
+                    <div class="leg-metrics">
+                      <div class="leg-row">
+                        <span>数量</span>
+                        <strong>{{ fmtQty(data.dump.buyLow) }}<em>万</em></strong>
+                      </div>
+                      <div class="leg-row">
+                        <span>金额</span>
+                        <strong>{{ fmtQty(data.dump.usdtOut30) }}<em>万USDT</em></strong>
+                      </div>
+                      <div class="leg-row">
+                        <span>均价</span>
+                        <strong>{{ fmtPrice(data.dump.avgBuy) }}</strong>
+                      </div>
+                      <div class="leg-row">
+                        <span>人数</span>
+                        <strong>{{ data.dump.buyUsers }}<em>人</em></strong>
+                      </div>
+                      <div class="leg-row">
+                        <span>笔数</span>
+                        <strong>{{ data.dump.buyFills }}<em>笔</em></strong>
+                      </div>
+                    </div>
                   </div>
                 </div>
                 <div class="trade-meta">
@@ -172,15 +189,15 @@
                     <div class="mini-value">{{ signedQty(data.dump.tokenDelta) }}<span>万</span></div>
                   </div>
                   <div>
-                    <div class="mini-label">平均价格</div>
-                    <div class="mini-value">{{ data.dump.avgNetPrice == null ? '--' : data.dump.avgNetPrice }}</div>
+                    <div class="mini-label">{{ dumpTradeAvg.label }}</div>
+                    <div class="mini-value" :style="{ color: dumpTradeAvg.color }">{{ dumpTradeAvg.text }}</div>
                   </div>
                 </div>
               </div>
             </div>
             <div class="card">
               <div class="card-header">
-                <span>🎯 对手是谁</span>
+                <span>🎯 交易对手方</span>
                 <span class="badge">用户买 = 你卖 · 用户卖 = 你买</span>
               </div>
               <div class="table-wrap">
@@ -217,10 +234,20 @@
               </div>
             </div>
           </div>
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-header"><span>📦 做市库存</span><span class="badge">万枚 · 含借入虚增</span></div>
+              <ChartBox :option="dumpInvOption" />
+            </div>
+            <div class="card">
+              <div class="card-header"><span>🧩 自有 vs 借入虚增</span><span class="badge">做市库存拆分</span></div>
+              <ChartBox :option="dumpBookOption" />
+            </div>
+          </div>
           <div class="card">
             <div class="card-header">
-              <span>📈 {{ dumpWord }}现价 / 库存成本 / 净买入</span>
-              <span class="badge">现价 {{ fmtPrice(data.dump.lastPrice) }} · 库存成本 {{ fmtPrice(data.dump.invCost) }} · 柱在零上=买入</span>
+              <span>📈 {{ dumpWord }}K线</span>
+              <span class="badge">库存成本 {{ fmtPrice(data.dump.invCost) }} · 柱在零上=买入</span>
             </div>
             <ChartBox size="combo" :option="dumpFlowOption" />
           </div>
@@ -234,7 +261,7 @@
           <div class="card">
             <div class="card-header">
               <span>📋 {{ dumpWord }}成交明细</span>
-              <span class="badge">做市视角 · {{ (data.dump.fills || []).length }} 笔 · 点 UID 进用户</span>
+              <span class="badge">做市视角 · {{ fillPager.total }} 笔 · 点 UID 进用户</span>
             </div>
             <div class="table-wrap">
               <table>
@@ -251,7 +278,7 @@
                 </thead>
                 <tbody>
                   <tr
-                    v-for="(row, index) in data.dump.fills"
+                    v-for="(row, index) in fillPager.pagedRows"
                     :key="`${row.time}-${row.uid}-${index}`"
                     class="row-link"
                     @click="$router.push(userDetailPath(row.uid))"
@@ -267,284 +294,14 @@
                 </tbody>
               </table>
             </div>
+            <TablePager
+              v-model:page="fillPager.page"
+              v-model:page-size="fillPager.pageSize"
+              :page-count="fillPager.pageCount"
+              :total="fillPager.total"
+              :range-text="fillPager.rangeText"
+            />
           </div>
-        </template>
-
-        <template v-else-if="kind === 'absorb'">
-          <div class="kpi-grid">
-            <div class="kpi-item">
-              <div class="label">平台用户USDT</div>
-              <div class="kpi-metrics">
-                <div class="value" style="color:#4cd9a0;">{{ fmtQty(data.absorb.userCashU) }}<span class="unit">万USDT</span></div>
-              </div>
-              <div class="sub">所内真实用户余额 · 卖出时接你货的钱</div>
-            </div>
-            <div class="kpi-item" @click="$router.push('/chips/user')">
-              <div class="label">平台用户代币</div>
-              <div class="kpi-metrics">
-                <div class="value" style="color:#ffb347;">{{ fmtQty(data.absorb.userToken) }}<span class="unit">万</span></div>
-                <div class="qty">{{ fmtQty(data.absorb.userTokenU) }}<span class="unit">万USDT</span></div>
-              </div>
-              <div class="sub">所内真实用户手里的量 · 不含做市</div>
-            </div>
-            <div class="kpi-item">
-              <div class="label">用户资产合计</div>
-              <div class="kpi-metrics">
-                <div class="value">{{ fmtQty(data.absorb.assetsU) }}<span class="unit">万USDT</span></div>
-              </div>
-              <div class="sub">USDT + 代币市值</div>
-            </div>
-            <div class="kpi-item" @click="$router.push('/chips/user')">
-              <div class="label">持仓用户</div>
-              <div class="kpi-metrics">
-                <div class="value">{{ data.absorb.holders }}<span class="unit">人</span></div>
-              </div>
-              <div class="sub">所内仍有代币的真实 UID</div>
-            </div>
-          </div>
-          <div class="kpi-grid">
-            <div class="kpi-item" @click="$router.push('/ops/stance')">
-              <div class="label">现价下跌5% 用户买单数量</div>
-              <div class="kpi-metrics">
-                <div class="value" style="color:#6a9aff;">{{ fmtQty(data.absorb.bid5Qty) }}<span class="unit">万</span></div>
-                <div class="qty">2% {{ fmtQty(data.absorb.bid2Qty) }} · 10% {{ fmtQty(data.absorb.bid10Qty) }}</div>
-              </div>
-              <div class="sub">{{ fmtQty(data.absorb.bid5U) }}万USDT</div>
-            </div>
-            <div class="kpi-item" @click="$router.push('/ops/stance')">
-              <div class="label">现价上涨5% 用户卖单数量</div>
-              <div class="kpi-metrics">
-                <div class="value" style="color:#ff5a7a;">{{ fmtQty(data.absorb.ask5Qty) }}<span class="unit">万</span></div>
-                <div class="qty">2% {{ fmtQty(data.absorb.ask2Qty) }} · 10% {{ fmtQty(data.absorb.ask10Qty) }}</div>
-              </div>
-              <div class="sub">{{ fmtQty(data.absorb.ask5U) }}万USDT</div>
-            </div>
-            <div class="kpi-item" @click="$router.push('/whales/exchange')">
-              <div class="label">近端充值进所</div>
-              <div class="kpi-metrics">
-                <div class="value" style="color:#ffb347;">{{ fmtQty(data.absorb.inboundQty) }}<span class="unit">万</span></div>
-              </div>
-              <div class="sub">供给进所 · 低位可以买回来</div>
-            </div>
-            <div class="kpi-item" @click="$router.push('/desk/users')">
-              <div class="label">用户净买入</div>
-              <div class="kpi-metrics">
-                <div class="value" :style="{ color: data.users.realNet >= 0 ? '#6a9aff' : '#ffb347' }">
-                  {{ signedQty(data.users.realNet) }}<span class="unit">万</span>
-                </div>
-              </div>
-              <div class="sub">{{ absorbIsToday ? '今日' : '当日' }}真实 UID</div>
-            </div>
-          </div>
-          <div class="grid-2">
-            <div class="card">
-              <div class="card-header"><span>💰 用户 USDT 分档</span><span class="badge">按余额</span></div>
-              <ChartBox :option="cashPieOption" />
-            </div>
-            <div class="card">
-              <div class="card-header"><span>📋 分档明细</span><span class="badge">{{ data.absorb.cashBands.length }} 档</span></div>
-              <div class="table-wrap">
-                <table>
-                  <thead>
-                    <tr><th>余额</th><th>人数</th><th>USDT(万)</th></tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="row in data.absorb.cashBands" :key="row.name">
-                      <td>{{ row.name }}</td>
-                      <td>{{ row.users }}</td>
-                      <td>{{ fmtQty(row.cashU) }}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </template>
-
-        <template v-else>
-          <div class="kpi-grid">
-            <div class="kpi-item" @click="$router.push('/chips/user')">
-              <div class="label">盘面代币</div>
-              <div class="kpi-metrics">
-                <div class="value" style="color:#ffb347;">{{ fmtQty(data.surfaceToken) }}<span class="unit">万</span></div>
-              </div>
-              <div class="sub">所内用户手里现在的量 · 不含做市</div>
-            </div>
-            <div class="kpi-item">
-              <div class="label">现价</div>
-              <div class="kpi-metrics">
-                <div class="value">{{ data.stance.lastPrice }}</div>
-              </div>
-              <div class="sub">做市成本 {{ data.stance.mmCost ?? '--' }} · 用户均价 {{ data.stance.avgCost }}</div>
-            </div>
-            <div class="kpi-item">
-              <div class="label">+10% · {{ step10?.price }}</div>
-              <div class="kpi-metrics">
-                <div class="value" style="color:#ff5a7a;">预估卖出 {{ fmtQty(step10?.expectedSell) }}<span class="unit">万</span></div>
-                <div class="qty" style="color:#6a9aff;">预估买入 {{ fmtQty(step10?.expectedBuy) }}<span class="unit">万</span></div>
-              </div>
-              <div class="sub">{{ step10?.play }} · 维持 +10%</div>
-            </div>
-            <div class="kpi-item">
-              <div class="label">-10% · {{ stepDown10?.price }}</div>
-              <div class="kpi-metrics">
-                <div class="value" style="color:#ff5a7a;">预估卖出 {{ fmtQty(stepDown10?.expectedSell) }}<span class="unit">万</span></div>
-                <div class="qty" style="color:#6a9aff;">预估买入 {{ fmtQty(stepDown10?.expectedBuy) }}<span class="unit">万</span></div>
-              </div>
-              <div class="sub">{{ stepDown10?.play }} · 维持 -10%</div>
-            </div>
-          </div>
-
-          <div class="card gloss-card">
-            <div class="card-header">
-              <span>预估买入卖出</span>
-              <span class="badge">维持这一档价格</span>
-            </div>
-            <div class="gloss-grid four">
-              <div class="gloss-item">
-                <div class="gloss-name">涨为什么会卖</div>
-                <p>{{ data.ladderGloss.upSell }}</p>
-                <table class="gloss-mini">
-                  <thead>
-                    <tr>
-                      <th>浮盈</th>
-                      <th>可能卖出</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="row in data.ladderGloss.upSellRates" :key="row.pnl">
-                      <td>{{ row.pnl }}</td>
-                      <td>{{ row.pct }}%仓位</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <div class="gloss-item">
-                <div class="gloss-name">涨为什么会买</div>
-                <p>{{ data.ladderGloss.upBuy }}</p>
-                <table class="gloss-mini">
-                  <thead>
-                    <tr>
-                      <th>台阶</th>
-                      <th>占闲置 USDT</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="row in data.ladderGloss.upBuyRates" :key="row.step">
-                      <td>{{ row.step }}</td>
-                      <td>{{ row.pct }}%</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <div class="gloss-item">
-                <div class="gloss-name">跌为什么会卖</div>
-                <p>{{ data.ladderGloss.downSell }}</p>
-                <table class="gloss-mini">
-                  <thead>
-                    <tr>
-                      <th>浮亏</th>
-                      <th>可能卖出</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="row in data.ladderGloss.downSellRates" :key="row.pnl">
-                      <td>{{ row.pnl }}</td>
-                      <td>{{ row.pct }}%仓位</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <div class="gloss-item">
-                <div class="gloss-name">跌为什么会买</div>
-                <p>{{ data.ladderGloss.downBuy }}</p>
-                <table class="gloss-mini">
-                  <thead>
-                    <tr>
-                      <th>台阶</th>
-                      <th>占闲置 USDT</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="row in data.ladderGloss.downBuyRates" :key="row.step">
-                      <td>{{ row.step }}</td>
-                      <td>{{ row.pct }}{{ row.pct === '—' ? '' : '%' }}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="card-header">
-              <span>📋 台阶明细</span>
-              <span class="badge">盘面代币 {{ fmtQty(data.surfaceToken) }}万 · 价格 = 现价 {{ data.stance.lastPrice }} × (1 + 台阶)</span>
-            </div>
-            <div class="table-wrap ladder-wrap">
-              <table class="ladder-table">
-                <thead>
-                  <tr>
-                    <th>台阶</th>
-                    <th>价格</th>
-                    <th class="num">盘面代币</th>
-                    <th class="num">预估卖出</th>
-                    <th class="num">预估买入</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr
-                    v-for="row in data.ladder"
-                    :key="row.pct"
-                    :class="{ 'is-blocked': row.playKind === 'no', 'is-spot': row.side === 'spot', 'is-up': row.side === 'up', 'is-down': row.side === 'down' }"
-                  >
-                    <td><div class="step-name">{{ row.label }}</div></td>
-                    <td class="step-price">{{ row.price }}</td>
-                    <td class="num">{{ fmtQty(row.surfaceToken) }}<span class="unit">万</span></td>
-                    <td class="num flow-cell">
-                      <div class="cell-main" style="color:#ff5a7a;">{{ fmtQty(row.expectedSell) }}<span class="unit">万</span></div>
-                      <div v-if="sellBar(row).length" class="flow-bar is-sell">
-                        <div
-                          v-for="band in sellBar(row)"
-                          :key="band.key"
-                          class="flow-seg"
-                          :class="[band.kind, band.key]"
-                          :style="{ flex: Math.max(Number(band.sellPct) || 0, 1) }"
-                        >
-                          <span v-if="Number(band.sellPct) >= 10" class="flow-seg-pct">{{ band.sellPct }}%</span>
-                          <div class="flow-tip">
-                            <div class="tip-row"><span>盈亏范围</span>{{ band.label }}</div>
-                            <div class="tip-row"><span>占比</span>{{ band.sellPct }}%</div>
-                            <div class="tip-row"><span>数量</span>{{ fmtQty(band.sellAmt) }}万</div>
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td class="num flow-cell">
-                      <div class="cell-main" style="color:#6a9aff;">{{ fmtQty(row.expectedBuy) }}<span class="unit">万</span></div>
-                      <div v-if="buyBar(row).length" class="flow-bar is-buy">
-                        <div
-                          v-for="band in buyBar(row)"
-                          :key="band.key"
-                          class="flow-seg"
-                          :class="[band.kind, band.key]"
-                          :style="{ flex: Math.max(Number(band.buyPct) || 0, 1) }"
-                        >
-                          <span v-if="Number(band.buyPct) >= 10" class="flow-seg-pct">{{ band.buyPct }}%</span>
-                          <div class="flow-tip">
-                            <div class="tip-row"><span>来源</span>{{ band.label }}</div>
-                            <div class="tip-row"><span>占比</span>{{ band.buyPct }}%</div>
-                            <div class="tip-row"><span>数量</span>{{ fmtQty(band.buyAmt) }}万</div>
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </template>
       </template>
     </PageState>
   </div>
@@ -557,68 +314,49 @@ import { api } from '@/api'
 import { appState } from '@/stores/app'
 import { userDetailPath } from '@/utils/uid'
 import { usePageData } from '@/composables/usePageData'
+import { usePager } from '@/composables/usePager'
 import ChartBox from '@/components/ChartBox.vue'
 import PageState from '@/components/PageState.vue'
+import TablePager from '@/components/TablePager.vue'
 import { mmFlowChartOption } from '@/utils/mmFlowChart'
+import { actionDot, namedHex } from '@/utils/palette'
 
 const route = useRoute()
-const kind = computed(() => route.meta.opsKind || 'dump')
-const dayDate = computed(() => {
-  if ((kind.value === 'dump' || kind.value === 'absorb') && typeof route.query.date === 'string') return route.query.date
-  return ''
-})
+const dayDate = computed(() => (typeof route.query.date === 'string' ? route.query.date : ''))
 const { loading, error, data, bindPair, load } = usePageData(() =>
   api.getOpsDesk(appState.currentPair, appState.config.sleepIdleDays, appState.config.internalAccounts || [], dayDate.value)
 )
 bindPair()
-watch([kind, dayDate], () => {
-  if (kind.value === 'dump' || kind.value === 'absorb') load()
-})
+watch(dayDate, () => load())
+
+const fillPager = usePager(computed(() => data.value?.dump?.fills || []))
 
 const dumpIsToday = computed(() => data.value?.dump?.isToday !== false)
-const absorbIsToday = computed(() => data.value?.absorb?.isToday !== false)
 const dumpWord = computed(() => (dumpIsToday.value ? '今日' : '当日'))
 const pairBase = computed(() => String(appState.currentPair || '').split('/')[0] || 'TOKEN')
 const pairQuote = computed(() => String(appState.currentPair || '').split('/')[1] || 'USDT')
 
-const header = computed(() => {
-  if (kind.value === 'absorb') {
-    if (!absorbIsToday.value) {
-      return {
-        title: `💰 真实用户${data.value?.absorb?.dateTitle || '当日'}资产情况`,
-        badge: `${data.value?.absorb?.dateLabel || ''} · 不含做市 / 金库等`
-      }
-    }
-    return { title: '💰 真实用户今日资产情况', badge: '所内 USDT + 代币 · 不含做市 / 金库等' }
+const dumpTradeAvg = computed(() => {
+  const dump = data.value?.dump
+  const delta = Number(dump?.tokenDelta)
+  if (!Number.isFinite(delta) || delta === 0) {
+    return { label: '交易均价', text: '--', color: '' }
   }
-  if (kind.value === 'ladder') return { title: '🪜 价格台阶', badge: '盘面代币 · 维持该价的预估买入 / 预估卖出' }
-  if (!dumpIsToday.value) {
-    return {
-      title: `📤 做市账户${data.value?.dump?.dateTitle || '当日'}交易情况`,
-      badge: `${data.value?.dump?.dateLabel || ''} 做市成交`
-    }
+  if (delta > 0) {
+    return { label: '买入均价', text: String(fmtPrice(dump.avgBuy)), color: '#6a9aff' }
   }
-  return { title: '📤 做市账户今日交易情况', badge: '今日做市成交 · 单日看历史' }
+  return { label: '卖出均价', text: String(fmtPrice(dump.avgSell)), color: '#ff5a7a' }
 })
 
-const ladderRows = computed(() => data.value?.ladder || [])
-const step10 = computed(() => ladderRows.value.find((row) => row.pct === 10))
-const stepDown10 = computed(() => ladderRows.value.find((row) => row.pct === -10))
-
-const cashPieOption = computed(() => ({
-  tooltip: { trigger: 'item', formatter: (item) => `${item.name}<br/>${item.value} 万USDT` },
-  series: [{
-    type: 'pie',
-    radius: ['42%', '68%'],
-    data: (data.value?.absorb?.cashBands || []).map((item) => ({
-      name: item.name,
-      value: item.cashU,
-      itemStyle: { color: item.color }
-    })),
-    label: { color: '#b0c8e8', fontSize: 9, formatter: '{b}\n{d}%' },
-    labelLine: { lineStyle: { color: '#2a3a5a' } }
-  }]
-}))
+const header = computed(() => {
+  if (!dumpIsToday.value) {
+    return {
+      title: `📤 做市账户${data.value?.dump?.dateTitle || '当日'}`,
+      badge: `${data.value?.dump?.dateLabel || ''} 交易 + 资产`
+    }
+  }
+  return { title: '📤 做市账户今日', badge: '交易 + 资产' }
+})
 
 const dumpHourOption = computed(() => ({
   tooltip: { trigger: 'axis' },
@@ -646,13 +384,44 @@ const dumpFlowOption = computed(() => mmFlowChartOption({
   interval: 2
 }))
 
-function sellBar(row) {
-  return (row?.sellBands || []).filter((band) => Number(band.sellAmt) > 0)
-}
+const dumpInvOption = computed(() => ({
+  tooltip: { trigger: 'axis' },
+  grid: { left: '8%', right: '4%', top: '12%', bottom: '12%' },
+  xAxis: {
+    data: data.value?.mmToday?.history?.hours || data.value?.dump?.hours || [],
+    axisLabel: { color: '#4a6080', fontSize: 8, interval: 3 }
+  },
+  yAxis: {
+    splitLine: { lineStyle: { color: '#111927' } },
+    axisLabel: { color: '#4a6080', fontSize: 8 },
+    name: '万枚',
+    nameTextStyle: { color: '#4a6080', fontSize: 9 }
+  },
+  series: [{
+    name: '做市库存',
+    type: 'line',
+    data: data.value?.mmToday?.history?.invHour || [],
+    smooth: true,
+    lineStyle: { color: '#a78bfa', width: 2 },
+    areaStyle: { color: 'rgba(167,139,250,0.16)' },
+    symbol: 'none'
+  }]
+}))
 
-function buyBar(row) {
-  return (row?.buyBands || []).filter((band) => Number(band.buyAmt) > 0)
-}
+const dumpBookOption = computed(() => ({
+  tooltip: { trigger: 'item' },
+  legend: { textStyle: { color: '#4a6080', fontSize: 10 }, top: 0, data: ['自有代币', '借入虚增'] },
+  series: [{
+    type: 'pie',
+    radius: ['42%', '68%'],
+    data: (data.value?.mmToday?.book || []).map((item) => ({
+      value: item.value,
+      name: item.name,
+      itemStyle: { color: namedHex(item.name) }
+    })),
+    label: { color: '#b0c8e8', fontSize: 10, formatter: '{b}\n{c} 万' }
+  }]
+}))
 
 function fmtQty(value) {
   const n = Number(value)
@@ -726,11 +495,39 @@ function fmtPrice(value) {
 .trade-leg.is-buy {
   background: rgba(106, 154, 255, 0.08);
 }
-.trade-leg.is-sell .mini-value {
+.trade-leg.is-sell .leg-row strong {
   color: #ff5a7a;
 }
-.trade-leg.is-buy .mini-value {
+.trade-leg.is-buy .leg-row strong {
   color: #6a9aff;
+}
+.leg-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+}
+.leg-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+.leg-row span {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+.leg-row strong {
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.leg-row em {
+  margin-left: 2px;
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--text-soft);
 }
 .trade-meta {
   display: grid;
@@ -759,6 +556,9 @@ function fmtPrice(value) {
   font-size: 11px;
   color: var(--text-muted);
 }
+.kpi-grid.mm-kpis {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
 .kpi-item {
   display: flex;
   flex-direction: column;
@@ -786,164 +586,6 @@ function fmtPrice(value) {
   color: var(--text-soft);
   font-weight: 400;
   margin-left: 1px;
-}
-.is-blocked td {
-  color: #d8c8a8;
-}
-.play-tag {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 99px;
-  font-size: 11px;
-  font-weight: 700;
-}
-.play-ok {
-  color: #4cd9a0;
-  background: rgba(76, 217, 160, 0.12);
-}
-.play-no {
-  color: #ff5a7a;
-  background: rgba(255, 90, 122, 0.12);
-}
-.play-watch {
-  color: #ffb347;
-  background: rgba(255, 179, 71, 0.12);
-}
-.is-spot td {
-  font-weight: 600;
-}
-.step-name {
-  font-weight: 700;
-}
-.is-up .step-name {
-  color: #ffb347;
-}
-.is-down .step-name {
-  color: #6a9aff;
-}
-.step-price {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-variant-numeric: tabular-nums;
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--text-title, #e8f0ff);
-}
-.is-spot .step-price {
-  color: #4cd9a0;
-}
-.ladder-table th.num,
-.ladder-table td.num {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-.ladder-table td .unit {
-  margin-left: 2px;
-  font-size: 10px;
-  color: var(--text-soft);
-  font-weight: 400;
-}
-.ladder-table tbody tr.is-spot {
-  background: rgba(76, 217, 160, 0.06);
-}
-.ladder-wrap {
-  overflow: visible;
-}
-.flow-cell {
-  min-width: 220px;
-  padding-bottom: 8px;
-}
-.flow-cell .cell-main {
-  font-weight: 700;
-}
-.flow-bar {
-  display: flex;
-  width: 100%;
-  height: 20px;
-  margin-top: 6px;
-  overflow: visible;
-  border-radius: 5px;
-}
-.flow-bar.is-sell {
-  background: rgba(255, 90, 122, 0.1);
-}
-.flow-bar.is-buy {
-  background: rgba(106, 154, 255, 0.1);
-}
-.flow-seg {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 4px;
-  height: 100%;
-  cursor: default;
-}
-.flow-seg + .flow-seg {
-  box-shadow: inset 1px 0 0 rgba(8, 14, 24, 0.35);
-}
-.flow-seg:first-child {
-  border-radius: 5px 0 0 5px;
-}
-.flow-seg:last-child {
-  border-radius: 0 5px 5px 0;
-}
-.flow-seg:only-child {
-  border-radius: 5px;
-}
-.flow-seg.profit.p20 { background: #ff5a7a; }
-.flow-seg.profit.p10 { background: #ff7a94; }
-.flow-seg.profit.p5 { background: #d96a80; }
-.flow-seg.profit.p0 { background: #c45d72; }
-.flow-seg.loss.l0 { background: #8eb0ff; }
-.flow-seg.loss.l5 { background: #6a9aff; }
-.flow-seg.loss.l10 { background: #547fe0; }
-.flow-seg.loss.l20 { background: #3d63b8; }
-.flow-seg.wall { background: #6a9aff; }
-.flow-seg.idle { background: #4cd9a0; }
-.flow-seg.fresh { background: #a78bfa; }
-.flow-seg:hover {
-  filter: brightness(1.12);
-  z-index: 3;
-}
-.flow-seg-pct {
-  font-size: 9px;
-  font-weight: 700;
-  color: #fff;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
-  pointer-events: none;
-}
-.flow-tip {
-  display: none;
-  position: absolute;
-  left: 50%;
-  top: calc(100% + 8px);
-  z-index: 8;
-  min-width: 148px;
-  padding: 8px 10px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: #0e1622;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
-  transform: translateX(-50%);
-  text-align: left;
-  white-space: nowrap;
-  font-size: 11px;
-  line-height: 1.55;
-  font-weight: 400;
-  color: var(--text-title, #e8f0ff);
-}
-.flow-tip .tip-row {
-  display: flex;
-  gap: 10px;
-}
-.flow-tip .tip-row span {
-  width: 56px;
-  color: var(--text-muted, #9ab0cc);
-  font-weight: 400;
-}
-.flow-seg:hover .flow-tip {
-  display: block;
 }
 .gloss-grid {
   display: grid;
@@ -1028,5 +670,11 @@ function fmtPrice(value) {
   .trade-meta {
     grid-template-columns: 1fr;
   }
+}
+.empty-hint {
+  padding: 18px 8px;
+  font-size: 12px;
+  color: #7a90b0;
+  line-height: 1.5;
 }
 </style>
