@@ -23,7 +23,7 @@
           <p class="blurb">
             日充值 / 提现。点日期看当日明细。
             <router-link class="inline-link" to="/whales/exchange">看今日</router-link>
-            <router-link class="inline-link" to="/orderbook">盘口大单</router-link>
+            <router-link class="inline-link" to="/ops/ladder">盘口大单</router-link>
           </p>
         </div>
 

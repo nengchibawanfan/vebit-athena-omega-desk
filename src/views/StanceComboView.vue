@@ -1,7 +1,7 @@
 <template>
   <div class="page">
     <CollapsibleConfig class="config-bar" title="⚙️ 价格台阶配置" storage-key="ops-stance">
-      <template #extra>近端档位 / OBI / 偏离预警</template>
+      <template #extra>近端档位 / OBI / 偏离 / 大单</template>
       <div class="group">
         <label>近端档位</label>
         <select :value="appState.config.depthLevels" @change="onDepthChange">
@@ -26,6 +26,11 @@
         <button class="btn-sm" :class="{ primary: Number(appState.config.costDevWarn) === 20 }" @click="setDevWarn(20)">20%</button>
         <button class="btn-sm" :class="{ primary: Number(appState.config.costDevWarn) === 30 }" @click="setDevWarn(30)">30%</button>
       </div>
+      <div class="group">
+        <label>🐋 大单阈值</label>
+        <input type="number" :value="appState.config.whaleThreshold" min="1" step="1" @change="onWhaleChange" />
+        <span class="hint">万枚 · 用户买是你卖出</span>
+      </div>
     </CollapsibleConfig>
 
     <PageState :loading="loading && !data" :error="error">
@@ -33,13 +38,16 @@
         <div class="card">
           <div class="card-header">
             <span>🪜 价格台阶</span>
-            <span class="badge">真实挂单 · 厚度 · 成本偏离</span>
+            <span class="badge">真实挂单 · 盘口大单 · 成本偏离</span>
           </div>
           <p class="blurb">
-            {{ ops.ladderBlurb || '现价到该档的真实挂单：往上是卖墙，往下是买墙。' }}
-            近端厚度看真实用户买量 − 卖量。偏离看现价相对持仓均价。
+            预估卖出：到当前价格，用户持仓盈利或者亏损不同比例会卖出不同比例的仓位。浮盈 / 浮亏 5% 约卖 10% 仓，10% 约卖 20%，30% 约卖 30%。
           </p>
-          <div class="monitor-status">
+          <p class="blurb">
+            盘口大单：真实 UID · ≥{{ appState.config.whaleThreshold }}万 · 不含做市。用户买 = 你卖出，用户卖 = 你买入。
+          </p>
+          <StatusStrip v-if="blocks.status?.length" :items="blocks.status" />
+          <div class="ladder-status">
             <div class="status-row">
               <div class="status-item">
                 <span class="status-dot" :class="actionDot(ops.stance?.action)"></span>
@@ -62,7 +70,7 @@
         </div>
 
         <div class="kpi-grid">
-          <div class="kpi-item" @click="$router.push('/desk/users')">
+          <div class="kpi-item clickable" @click="$router.push('/desk/users')">
             <div class="label">用户持有流通代币</div>
             <div class="kpi-metrics">
               <div class="value" style="color:#ffb347;">{{ fmtQty(ops.surfaceToken) }}<span class="unit">万</span></div>
@@ -91,28 +99,28 @@
               <div class="qty">含做市 {{ obi.kpis.grossObiLabel }}</div>
             </div>
           </div>
-          <div class="kpi-item" @click="$router.push('/desk/users/chips')">
+          <div class="kpi-item clickable" @click="$router.push('/desk/users/chips')">
             <div class="label">持仓均价</div>
             <div class="kpi-metrics">
               <div class="value" style="color:#6a9aff;">{{ cost.kpis.avgCost }}</div>
             </div>
             <div class="sub">真实用户加权 · 点进筹码分布</div>
           </div>
-          <div class="kpi-item" @click="$router.push('/orderbook')">
+          <div class="kpi-item">
             <div class="label">近端买盘</div>
             <div class="kpi-metrics">
               <div class="value" style="color:#4cd9a0;">{{ fmtQty(obi.kpis.realBid) }}<span class="unit">万</span></div>
               <div class="qty">含做市 {{ fmtQty(obi.kpis.bidQty) }}</div>
             </div>
-            <div class="sub">前 {{ obi.kpis.levels }} 档 · 点进盘面情况</div>
+            <div class="sub">前 {{ obi.kpis.levels }} 档 · 真实挂单</div>
           </div>
-          <div class="kpi-item" @click="$router.push('/orderbook')">
+          <div class="kpi-item">
             <div class="label">近端卖盘</div>
             <div class="kpi-metrics">
               <div class="value" style="color:#ff5a7a;">{{ fmtQty(obi.kpis.realAsk) }}<span class="unit">万</span></div>
               <div class="qty">含做市 {{ fmtQty(obi.kpis.askQty) }}</div>
             </div>
-            <div class="sub">前 {{ obi.kpis.levels }} 档 · 点进盘面情况</div>
+            <div class="sub">前 {{ obi.kpis.levels }} 档 · 真实挂单</div>
           </div>
           <div class="kpi-item">
             <div class="label">价格偏离</div>
@@ -122,6 +130,31 @@
               </div>
               <div class="qty">浮盈 {{ cost.kpis.profitRatio }}% · 浮亏 {{ cost.kpis.underwater }}%</div>
             </div>
+          </div>
+          <div class="kpi-item">
+            <div class="label">净买入</div>
+            <div class="kpi-metrics">
+              <div class="value" :style="{ color: Number(blocks.kpis?.tradeNet) >= 0 ? '#6a9aff' : '#ffb347' }">
+                {{ signedQty(blocks.kpis?.tradeNet) }}<span class="unit">万</span>
+              </div>
+              <div class="qty">成交额 {{ fmtQty(blocks.kpis?.tradeVolume) }}<span class="unit">万</span></div>
+            </div>
+          </div>
+          <div class="kpi-item clickable" @click="$router.push('/alerts')">
+            <div class="label">待处理</div>
+            <div class="kpi-metrics">
+              <div class="value" :style="{ color: blocks.kpis?.alertCount ? '#ff5a7a' : '#4cd9a0' }">
+                {{ blocks.kpis?.pending }}<span class="unit">条</span>
+              </div>
+            </div>
+            <div class="sub">红色 {{ blocks.kpis?.alertCount }}</div>
+          </div>
+          <div class="kpi-item">
+            <div class="label">大单笔数</div>
+            <div class="kpi-metrics">
+              <div class="value">{{ (blocks.rows || []).length }}<span class="unit">笔</span></div>
+            </div>
+            <div class="sub">买 {{ blocks.kpis?.buyCount }} · 卖 {{ blocks.kpis?.sellCount }}</div>
           </div>
         </div>
 
@@ -178,23 +211,7 @@
           </div>
         </div>
 
-        <div class="card">
-          <div class="card-header">
-            <span>📈 近30日现价 vs 持仓均价</span>
-            <span class="badge">折线为偏离%</span>
-          </div>
-          <ChartBox :option="trendOption" />
-        </div>
-
-        <div class="card">
-          <div class="card-header"><span>😰 浮盈 / 浮亏分层</span><span class="badge">真实用户持仓</span></div>
-          <ChartBox :option="bucketOption" />
-        </div>
-
-        <div class="card">
-          <div class="card-header"><span>🏔️ 成本带分布</span><span class="badge">柱为持仓量 · 虚线为均价附近</span></div>
-          <ChartBox :option="bandOption" />
-        </div>
+        <OrderbookPanel :blocks="blocks" />
       </template>
     </PageState>
   </div>
@@ -205,24 +222,29 @@ import { computed } from 'vue'
 import { api } from '@/api'
 import { appState, updateConfig } from '@/stores/app'
 import { usePageData } from '@/composables/usePageData'
-import ChartBox from '@/components/ChartBox.vue'
 import PageState from '@/components/PageState.vue'
 import CollapsibleConfig from '@/components/CollapsibleConfig.vue'
-import { namedHex, actionDot } from '@/utils/palette'
+import OrderbookPanel from '@/components/OrderbookPanel.vue'
+import StatusStrip from '@/components/StatusStrip.vue'
+import { actionDot } from '@/utils/palette'
 
 const { loading, error, data, bindPair, load } = usePageData(async () => {
-  const [obi, cost, ops] = await Promise.all([
-    api.getObiDetail(appState.currentPair, appState.config.depthLevels, appState.config.obiWarn),
-    api.getCostDev(appState.currentPair, appState.config.costDevWarn),
-    api.getOpsDesk(appState.currentPair, appState.config.sleepIdleDays, appState.config.internalAccounts || [])
+  const pair = appState.currentPair
+  const accounts = appState.config.internalAccounts || []
+  const [obi, cost, ops, blocks] = await Promise.all([
+    api.getObiDetail(pair, appState.config.depthLevels, appState.config.obiWarn),
+    api.getCostDev(pair, appState.config.costDevWarn),
+    api.getOpsDesk(pair, appState.config.sleepIdleDays, accounts),
+    api.getBlockTrades(pair, appState.config.whaleThreshold, accounts)
   ])
-  return { obi, cost, ops }
+  return { obi, cost, ops, blocks }
 })
 bindPair()
 
 const obi = computed(() => data.value?.obi || { kpis: {}, history: {}, depthRows: [] })
 const cost = computed(() => data.value?.cost || { kpis: {}, history: {}, holders: [], buckets: [] })
 const ops = computed(() => data.value?.ops || { stance: {}, ladder: [], ladderBlurb: '' })
+const blocks = computed(() => data.value?.blocks || { kpis: {}, rows: [], hours: {}, status: [] })
 const ladder = computed(() => ops.value.ladder || [])
 const step10 = computed(() => ladder.value.find((row) => row.pct === 10))
 const stepDown10 = computed(() => ladder.value.find((row) => row.pct === -10))
@@ -241,6 +263,15 @@ function signed(value) {
   const n = Number(value)
   if (Number.isNaN(n)) return '--'
   return n > 0 ? `+${n}` : String(n)
+}
+
+function signedQty(value) {
+  const n = Number(value)
+  if (Number.isNaN(n)) return '--'
+  const text = fmtQty(Math.abs(n))
+  if (n > 0) return `+${text}`
+  if (n < 0) return `-${text}`
+  return text
 }
 
 function fmtPrice(value) {
@@ -274,66 +305,10 @@ function setDevWarn(value) {
   load()
 }
 
-const yAxis = { splitLine: { lineStyle: { color: '#111927' } }, axisLabel: { color: '#4a6080', fontSize: 8 } }
-
-const trendOption = computed(() => {
-  const history = cost.value.history
-  const devs = history?.devSeries || []
-  const minPct = devs.length ? Math.floor(Math.min(...devs, 0) - 4) : -10
-  const maxPct = devs.length ? Math.ceil(Math.max(...devs, 0) + 4) : 30
-  return {
-    tooltip: { trigger: 'axis' },
-    legend: { data: ['现价', '持仓均价', '偏离%'], textStyle: { color: '#4a6080', fontSize: 10 }, top: 0 },
-    grid: { left: '8%', right: '8%', top: '16%', bottom: '16%' },
-    xAxis: { data: history?.dates || [], axisLabel: { color: '#4a6080', fontSize: 8, rotate: 40 } },
-    yAxis: [
-      { ...yAxis, name: '价格', nameTextStyle: { color: '#4a6080', fontSize: 9 } },
-      { splitLine: { show: false }, axisLabel: { color: '#4a6080', fontSize: 8 }, min: minPct, max: maxPct, name: '%', nameTextStyle: { color: '#4a6080', fontSize: 9 } }
-    ],
-    series: [
-      { name: '现价', type: 'line', data: history?.priceSeries || [], smooth: true, lineStyle: { color: '#ffb347', width: 2 }, symbol: 'none' },
-      { name: '持仓均价', type: 'line', data: history?.costSeries || [], smooth: false, lineStyle: { color: '#6a9aff', width: 1.5, type: 'dashed' }, symbol: 'none' },
-      { name: '偏离%', type: 'line', yAxisIndex: 1, data: devs, smooth: true, lineStyle: { color: '#a78bfa', width: 2 }, symbol: 'circle', symbolSize: 4 }
-    ]
-  }
-})
-
-const bandOption = computed(() => ({
-  tooltip: { trigger: 'axis' },
-  grid: { left: '8%', right: '4%', top: '10%', bottom: '16%' },
-  xAxis: {
-    data: (cost.value.history?.bandLabels || []).map(String),
-    axisLabel: { color: '#4a6080', fontSize: 8 }
-  },
-  yAxis,
-  series: [{
-    type: 'bar',
-    data: cost.value.history?.bandAmounts || [],
-    itemStyle: { color: 'rgba(167,139,250,0.82)' },
-    barWidth: '48%',
-    markLine: {
-      silent: true,
-      data: [{ xAxis: String(cost.value.history?.bandLabels?.[2] || '') }],
-      lineStyle: { color: '#ffb347', type: 'dashed' },
-      label: { color: '#ffb347', fontSize: 8, formatter: '均价附近' }
-    }
-  }]
-}))
-
-const bucketOption = computed(() => ({
-  tooltip: { trigger: 'item', formatter: '{b}<br/>{c}万  {d}%' },
-  series: [{
-    type: 'pie',
-    radius: ['42%', '68%'],
-    data: (cost.value.buckets || []).map((item) => ({
-      name: item.name,
-      value: item.amount,
-      itemStyle: { color: namedHex(item.name) }
-    })),
-    label: { color: '#b0c8e8', fontSize: 9, formatter: '{b}\n{d}%' },
-    labelLine: { lineStyle: { color: '#2a3a5a' } }
-  }]
-}))
+function onWhaleChange(event) {
+  updateConfig({ whaleThreshold: Number(event.target.value) })
+  load()
+}
 </script>
 
 <style scoped>
@@ -343,9 +318,17 @@ const bucketOption = computed(() => ({
   line-height: 1.6;
   color: #9ab0cc;
 }
-.monitor-status {
+.ladder-status {
+  display: flex;
   flex-direction: column;
   gap: 4px;
+  margin-bottom: 8px;
+}
+.ladder-status .status-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
 }
 .status-row {
   display: flex;

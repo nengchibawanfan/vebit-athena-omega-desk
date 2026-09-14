@@ -64,9 +64,14 @@ export function tokenHex(symbol, index = 0) {
 export function namedHex(name, index = 0) {
   const text = String(name || '')
   if (/聪明钱|散户|羊毛|KOL|程序化/.test(text)) return personaHex(text.replace(/交易$/, ''))
+  if (text.includes('亏损 ≥50') || text.includes('亏损≥50')) return HEX.loss
+  if (text.includes('亏损 20')) return '#ff7a94'
+  if (text.includes('亏损')) return HEX.sell
+  if (text.includes('盈利 ≥50') || text.includes('盈利≥50')) return HEX.purple
+  if (text.includes('盈利 20')) return HEX.profit
+  if (text.includes('盈利') || text.includes('小赚') || text.includes('浮盈')) return HEX.profit
   if (text.includes('深套')) return HEX.loss
   if (text.includes('浅套') || text.includes('被套')) return HEX.sell
-  if (text.includes('小赚') || text.includes('浮盈')) return HEX.profit
   if (text.includes('大赚')) return HEX.purple
   if (text.includes('成本')) return HEX.buy
   if (text === '紧急') return HEX.loss

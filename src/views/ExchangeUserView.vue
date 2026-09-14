@@ -228,6 +228,40 @@
           <ChartBox size="tall" :option="posOption" />
         </div>
 
+        <div class="card">
+          <div class="card-header">
+            <span>📌 当前挂单</span>
+            <span class="badge">{{ (data.orders || []).length }} 笔 · 未成交</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>时间</th>
+                  <th>交易对</th>
+                  <th>方向</th>
+                  <th>价格</th>
+                  <th>数量(万)</th>
+                  <th>金额(万USDT)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(row, index) in data.orders" :key="`${row.time}-${row.side}-${index}`">
+                  <td>{{ row.time }}</td>
+                  <td>{{ row.pair }}</td>
+                  <td><span class="tag" :class="row.tag">{{ row.side }}</span></td>
+                  <td :class="row.side === '买' ? 'px-bid' : 'px-ask'">{{ fmtPrice(row.price) }}</td>
+                  <td>{{ fmtQty(row.qty) }}</td>
+                  <td>{{ fmtQty(row.notional) }}</td>
+                </tr>
+                <tr v-if="!(data.orders || []).length">
+                  <td colspan="6" class="empty-cell">当前没有挂单</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         <div class="card detail-table-card">
           <div class="card-header">
             <span>🧾 成交纪录</span>
@@ -633,6 +667,17 @@ const assetOption = computed(() => ({
 }
 .amt-withdraw {
   color: #4cd9a0;
+}
+.px-bid {
+  color: #4cd9a0;
+}
+.px-ask {
+  color: #ff5a7a;
+}
+.empty-cell {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 24px 8px;
 }
 @media (max-width: 1100px) {
   .kpi-grid {

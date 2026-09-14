@@ -147,6 +147,7 @@
                     <th>百分比</th>
                     <th>每单数量 (USDT)</th>
                     <th>挂单数量</th>
+                    <th>挂单间隔</th>
                     <th></th>
                   </tr>
                 </thead>
@@ -164,6 +165,7 @@
                     <td>{{ rulePct(rule.minPrice, rule.maxPrice) }}</td>
                     <td>{{ ruleRange(rule.minAmt, rule.maxAmt) }}</td>
                     <td>{{ rule.count }}</td>
+                    <td>{{ fmtRuleNum(rule.intervalMs) }} ms</td>
                     <td class="rule-actions">
                       <button type="button" class="btn-sm" @click="openRuleEdit(side.key, rule.id)">编辑</button>
                       <button type="button" class="btn-sm secondary" @click="removeOrderRule(side.key, index)">移除</button>
@@ -292,6 +294,16 @@
             <span>笔</span>
           </label>
         </section>
+
+        <section class="rule-group">
+          <div class="rule-group-head">
+            <h3>挂单间隔</h3>
+          </div>
+          <label class="count-field">
+            <input v-model.number="editingRule.intervalMs" type="number" step="1" min="1" />
+            <span>ms</span>
+          </label>
+        </section>
       </div>
       <template #footer>
         <button type="button" class="btn-sm secondary" @click="discardRuleEdit">关闭</button>
@@ -360,7 +372,7 @@ const editPreview = computed(() => {
   if (!rule) return { range: '—', detail: '' }
   return {
     range: `现价 ${rulePct(rule.minPrice, rule.maxPrice)}`,
-    detail: `每单 ${ruleRange(rule.minAmt, rule.maxAmt)} USDT · 挂 ${fmtRuleNum(rule.count)} 笔`
+    detail: `每单 ${ruleRange(rule.minAmt, rule.maxAmt)} USDT · 挂 ${fmtRuleNum(rule.count)} 笔 · 间隔 ${fmtRuleNum(rule.intervalMs)} ms`
   }
 })
 const savedPack = computed(() => {
@@ -466,7 +478,8 @@ function ruleSig(rule) {
     Number(rule.maxPrice),
     Number(rule.minAmt),
     Number(rule.maxAmt),
-    Number(rule.count)
+    Number(rule.count),
+    Number(rule.intervalMs)
   ].join('|')
 }
 

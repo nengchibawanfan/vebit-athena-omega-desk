@@ -36,16 +36,16 @@ export const PAGE_TITLES = {
   'ops-dump-history': '做市账户历史 <small>交易 + 资产 · 点日期看当日</small>',
   'ops-absorb': '真实用户今日 <small>交易 + 资产 · 不含做市 / 金库等</small>',
   'ops-absorb-history': '真实用户历史 <small>交易 + 资产 · 点日期看当日</small>',
-  'ops-ladder': '价格台阶 <small>真实挂单 · 厚度 · 成本偏离</small>',
+  'ops-ladder': '价格台阶 <small>真实挂单 · 盘口大单 · 成本偏离</small>',
   'circ-exchange': '交易所内流通总量 <small>活跃 + 沉睡 + 做市账户</small>',
   'circ-onchain': '链上仓库 <small>不能成交 · 充回所内才可卖</small>',
-  orderbook: '盘面情况 <small>真实挂单 · 盘口大单 · 剔除做市</small>',
+  orderbook: '价格台阶 <small>已并入真实挂单与盘口大单</small>',
   position: '筹码行为 <small>持仓成本与用户心理</small>',
   risk: '机器人风控 <small>库存安全与策略参数</small>',
   robots: '机器人运行状态 <small>报价、做市库存与库存带</small>',
   'robots-config': '机器人配置 <small>策略 · 挂单 · 自成交 · 报价</small>',
   macro: '宏观威胁 <small>已并入链上仓库</small>',
-  'detail-orders': '盘面情况 <small>已并入真实挂单与盘口大单</small>',
+  'detail-orders': '价格台阶 <small>已并入真实挂单与盘口大单</small>',
   'detail-holders': '持仓均价 <small>UID 所内剩余存货成本</small>',
   'detail-whales': '充提 <small>货进唯一市场</small>',
   'whales-exchange': '今日充提 <small>所内可卖供给 · 不含做市 / 金库等</small>',
@@ -101,10 +101,7 @@ export const NAV_ITEMS = [
     ]
   },
   { divider: true, label: '对手盘' },
-  { to: '/user-profile/retail', page: 'persona-retail', icon: '👤', label: '散户' },
-  { to: '/user-profile/smart', page: 'persona-smart', icon: '🧠', label: '聪明钱' },
-  { divider: true, label: '盘口' },
-  { to: '/orderbook', page: 'orderbook', icon: '⚡', label: '盘面情况' },
+  { to: '/user-profile', page: 'user-profile', icon: '👤', label: '对手盘', match: 'profile' },
   { divider: true, label: '自己的账' },
   {
     icon: '🦾',
@@ -155,12 +152,13 @@ export const DEFAULT_ORDER_RULE = {
   maxPrice: 0.3,
   minAmt: 10000,
   maxAmt: 20000,
-  count: 5
+  count: 5,
+  intervalMs: 1000
 }
 
 export const DEFAULT_ORDER = {
-  bid: [{ id: 1, minPrice: 0.1, maxPrice: 0.3, minAmt: 10000, maxAmt: 20000, count: 5 }],
-  ask: [{ id: 1, minPrice: 0.1, maxPrice: 0.3, minAmt: 10000, maxAmt: 20000, count: 5 }]
+  bid: [{ id: 1, minPrice: 0.1, maxPrice: 0.3, minAmt: 10000, maxAmt: 20000, count: 5, intervalMs: 1000 }],
+  ask: [{ id: 1, minPrice: 0.1, maxPrice: 0.3, minAmt: 10000, maxAmt: 20000, count: 5, intervalMs: 1000 }]
 }
 
 export const ORDER_SIDES = [
@@ -173,7 +171,8 @@ export const ORDER_RULE_FIELDS = [
   { key: 'maxPrice', label: '最大百分比', hint: '0.3 = 千分之三', step: '0.01' },
   { key: 'minAmt', label: '最小每单数量 (USDT)', step: '0.00000001' },
   { key: 'maxAmt', label: '最大每单数量 (USDT)', step: '0.00000001' },
-  { key: 'count', label: '挂单数量', step: '1' }
+  { key: 'count', label: '挂单数量', step: '1' },
+  { key: 'intervalMs', label: '挂单间隔 (ms)', step: '1' }
 ]
 
 export const DEFAULT_WASH = {
@@ -223,11 +222,11 @@ export const DEFAULT_STRATEGIES = {
   guard: strategyPack(
     {
       bid: [
-        { id: 1, minPrice: 0.05, maxPrice: 0.15, minAmt: 15000, maxAmt: 30000, count: 5 },
-        { id: 2, minPrice: 0.2, maxPrice: 0.4, minAmt: 20000, maxAmt: 40000, count: 3 }
+        { id: 1, minPrice: 0.05, maxPrice: 0.15, minAmt: 15000, maxAmt: 30000, count: 5, intervalMs: 800 },
+        { id: 2, minPrice: 0.2, maxPrice: 0.4, minAmt: 20000, maxAmt: 40000, count: 3, intervalMs: 1200 }
       ],
       ask: [
-        { id: 1, minPrice: 0.1, maxPrice: 0.3, minAmt: 5000, maxAmt: 12000, count: 3 }
+        { id: 1, minPrice: 0.1, maxPrice: 0.3, minAmt: 5000, maxAmt: 12000, count: 3, intervalMs: 1000 }
       ]
     },
     {},
@@ -235,24 +234,24 @@ export const DEFAULT_STRATEGIES = {
   ),
   inventory: strategyPack(
     {
-      bid: [{ id: 1, minPrice: 0.15, maxPrice: 0.35, minAmt: 8000, maxAmt: 18000, count: 4 }],
-      ask: [{ id: 1, minPrice: 0.15, maxPrice: 0.35, minAmt: 8000, maxAmt: 18000, count: 4 }]
+      bid: [{ id: 1, minPrice: 0.15, maxPrice: 0.35, minAmt: 8000, maxAmt: 18000, count: 4, intervalMs: 1000 }],
+      ask: [{ id: 1, minPrice: 0.15, maxPrice: 0.35, minAmt: 8000, maxAmt: 18000, count: 4, intervalMs: 1000 }]
     },
     {},
     { bidSpread: 0.15, askSpread: 0.15, minDistance: 0.12, maxDistance: 0.3 }
   ),
   follow: strategyPack(
     {
-      bid: [{ id: 1, minPrice: 0.05, maxPrice: 0.15, minAmt: 6000, maxAmt: 12000, count: 3 }],
-      ask: [{ id: 1, minPrice: 0.05, maxPrice: 0.15, minAmt: 6000, maxAmt: 12000, count: 3 }]
+      bid: [{ id: 1, minPrice: 0.05, maxPrice: 0.15, minAmt: 6000, maxAmt: 12000, count: 3, intervalMs: 600 }],
+      ask: [{ id: 1, minPrice: 0.05, maxPrice: 0.15, minAmt: 6000, maxAmt: 12000, count: 3, intervalMs: 600 }]
     },
     {},
     { bidSpread: 0.06, askSpread: 0.06, minDistance: 0.04, maxDistance: 0.1, priceRandom: 0.5 }
   ),
   passive: strategyPack(
     {
-      bid: [{ id: 1, minPrice: 0.2, maxPrice: 0.5, minAmt: 10000, maxAmt: 25000, count: 6 }],
-      ask: [{ id: 1, minPrice: 0.2, maxPrice: 0.5, minAmt: 10000, maxAmt: 25000, count: 6 }]
+      bid: [{ id: 1, minPrice: 0.2, maxPrice: 0.5, minAmt: 10000, maxAmt: 25000, count: 6, intervalMs: 1500 }],
+      ask: [{ id: 1, minPrice: 0.2, maxPrice: 0.5, minAmt: 10000, maxAmt: 25000, count: 6, intervalMs: 1500 }]
     },
     {},
     { bidSpread: 0.2, askSpread: 0.2, minDistance: 0.15, maxDistance: 0.4 }

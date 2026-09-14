@@ -30,7 +30,7 @@ npm run preview    # 预览构建结果
 
 ## 约定接口
 
-**交给后端的完整约定（路径、请求、返回、每个数字怎么算）见 [docs/API.md](docs/API.md)。**
+**按页面解释每个名词和算法见 [docs/页面名词.md](docs/页面名词.md)。成本口径见 [docs/名词解释.md](docs/名词解释.md)。接口路径和字段见 [docs/API.md](docs/API.md)。**
 
 所有 GET 都带查询参数 `pair`（如 `VBT/USDT`）。历史接口前端传 `days=all`（全部历史，不是 7/15/30）。
 

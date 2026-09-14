@@ -80,7 +80,7 @@
         </div>
       </div>
 
-      <div class="card">
+      <div v-if="data.columns?.length" class="card">
         <div class="card-header">
           <span>👤 {{ data.name }}名单</span>
           <span class="badge">抽样 {{ data.rows.length }}</span>

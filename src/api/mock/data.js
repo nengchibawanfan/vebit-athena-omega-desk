@@ -274,6 +274,25 @@ export function generateOrderBook(pair) {
       filled: Number((((i * 3 + pairSeed) % 8) * 0.6).toFixed(1))
     })
   })
+  const clustered = [
+    { price: '1.04', side: '卖', tag: 'user', account: '用户 2***6', amount: 58.0 },
+    { price: '1.04', side: '卖', tag: 'user', account: '用户 5***1', amount: 12.4 },
+    { price: '0.99', side: '买', tag: 'user', account: '用户 8***3', amount: 72.0 },
+    { price: '0.99', side: '买', tag: 'user', account: '用户 1***5', amount: 9.6 }
+  ]
+  clustered.forEach((item, i) => {
+    rows.push({
+      id: `ord-${pairSeed}-c${i}`,
+      price: item.price,
+      side: item.side,
+      tag: item.tag,
+      amount: item.amount,
+      account: item.account,
+      time: clockNow(40 + i * 11),
+      cancels: 0,
+      filled: 0
+    })
+  })
   rows.sort((a, b) => Number(b.price) - Number(a.price))
   return summarizeOrderBook(rows)
 }
@@ -810,16 +829,12 @@ export function generateBlockTrades(pair, threshold = 50, internalAccounts = [])
       {
         color: tradeNet >= 0 ? 'yellow' : 'green',
         text: tradeNet >= 0
-          ? `大单净买入 ${fmtQtyPlain(tradeNet)}万 · 用户在接货，你在卖出`
-          : `大单净卖出 ${fmtQtyPlain(Math.abs(tradeNet))}万 · 用户在出货，你在买入`
+          ? `大单净买入 ${fmtQtyPlain(tradeNet)}万`
+          : `大单净卖出 ${fmtQtyPlain(Math.abs(tradeNet))}万`
       },
       {
         color: alertCount ? 'red' : 'green',
-        text: `阈值 ${minAmt}万 · 红色 ${alertCount} · 待处理 ${pending} · 最大冲击 ${maxImpact}%`
-      },
-      {
-        color: 'yellow',
-        text: `买入 ${buyCount} 笔 / 卖出 ${sellCount} 笔 · 已排除做市与金库等 UID`
+        text: `阈值 ${minAmt}万 · 红色 ${alertCount} · 待处理 ${pending}`
       }
     ]
   }
@@ -1034,18 +1049,14 @@ export function generatePersonaProfile(type, pair) {
         { key: 'winRate', label: '胜率' },
         { key: 'position', label: '当前仓位', format: 'qty', unit: '万' },
         { key: 'pnl', label: '浮盈亏', format: 'signed', unit: '万' },
-        { key: 'holdDays', label: '持仓(天)' },
-        { key: 'chase', label: '追涨次数' },
-        { key: 'last', label: '状态' }
+        { key: 'holdDays', label: '持仓(天)' }
       ],
       rows: personaUsers('RT', 10, (i, id) => ({
         id,
         winRate: `${18 + ((i * 7 + seed) % 22)}%`,
         position: Number((3.6 + i * 1.4 + seed * 0.5).toFixed(1)),
         pnl: Number((-(1.2 + i * 0.7 + seed * 0.3) * (i % 4 === 0 ? -0.4 : 1)).toFixed(1)),
-        holdDays: 2 + ((i * 3 + seed) % 11),
-        chase: 1 + ((i + seed) % 8),
-        last: i % 4 === 0 ? '刚追高' : i % 4 === 1 ? '扛单中' : i % 4 === 2 ? '止损离场' : '观望'
+        holdDays: 2 + ((i * 3 + seed) % 11)
       }))
     }),
     wool: () => ({
@@ -1109,22 +1120,8 @@ export function generatePersonaProfile(type, pair) {
         ] }
       ],
       notes: [],
-      columns: [
-        { key: 'id', label: 'UID' },
-        { key: 'alias', label: '别称' },
-        { key: 'calls', label: '今日喊单' },
-        { key: 'dump', label: '喊单后净卖', format: 'signed', unit: '万' },
-        { key: 'followLoss', label: '跟风浮亏', format: 'signed', unit: '万' },
-        { key: 'last', label: '最近话术' }
-      ],
-      rows: personaUsers('KL', 8, (i, id) => ({
-        id,
-        alias: ['趋势导师', '合约日记', '夜盘狙击', '稳稳的幸福', '主升浪', '链上侦探', '只做波段', '信号源'][i],
-        calls: 1 + (i % 3),
-        dump: Number((-(3.2 + i * 0.8 + seed * 0.4)).toFixed(1)),
-        followLoss: Number((-(2.1 + i * 0.6)).toFixed(1)),
-        last: i % 2 ? '「回踩支撑接住」' : '「主升才刚开始」'
-      }))
+      columns: [],
+      rows: []
     }),
     prog: () => ({
       blurb: '持仓以秒到分钟计，挂撤比极高。拉砸时会把近端墙打薄。要和自有挂价机器人分开看。',
@@ -1338,15 +1335,19 @@ export function generateUserChips(pair, sleepIdleDays = 30, internalAccounts) {
   const avgBand = costBands.find((item) => weightedAvg >= item.min && weightedAvg < item.max) || lastBand
 
   const pnlBuckets = [
-    { name: '深套 ≥15%', minPct: -Infinity, maxPct: -15, color: '#ff5a7a' },
-    { name: '浅套 0～15%', minPct: -15, maxPct: 0, color: '#ffb347' },
-    { name: '小赚 0～15%', minPct: 0, maxPct: 15, color: '#4cd9a0' },
-    { name: '大赚 ≥15%', minPct: 15, maxPct: Infinity, color: '#a78bfa' }
+    { name: '盈利 0–20%', minPct: 0, maxPct: 20, color: '#7ed9b0' },
+    { name: '盈利 20–50%', minPct: 20, maxPct: 50, color: '#4cd9a0' },
+    { name: '盈利 ≥50%', minPct: 50, maxPct: Infinity, color: '#a78bfa' },
+    { name: '亏损 0–20%', minPct: -20, maxPct: 0, color: '#ffb347' },
+    { name: '亏损 20–50%', minPct: -50, maxPct: -20, color: '#ff7a94' },
+    { name: '亏损 ≥50%', minPct: -Infinity, maxPct: -50, color: '#ff5a7a' }
   ].map((def) => {
     const hit = rows.filter((row) => {
       const pct = ((px.lastPrice - row.cost) / (row.cost || 1)) * 100
       if (def.maxPct === Infinity) return pct >= def.minPct
-      if (def.minPct === -Infinity) return pct < def.maxPct
+      if (def.minPct === -Infinity) return pct <= def.maxPct
+      if (def.maxPct === 0) return pct > def.minPct && pct < 0
+      if (def.maxPct < 0) return pct > def.minPct && pct <= def.maxPct
       return pct >= def.minPct && pct < def.maxPct
     })
     const amount = Number(hit.reduce((sum, row) => sum + row.amount, 0).toFixed(1))
@@ -3879,7 +3880,7 @@ export function generateCircSupply(pair, kind = 'exchange', sleepIdleDays = 30, 
         { time: '10:42', text: `UID ${topUser?.id || '--'} 买入 ${fmtQtyPlain(12 + pairSeed)}万 · 你在卖出`, tag: 'success', to: topUser?.to || '/desk/users' },
         { time: '10:18', text: `做市库存变动 ${fmtQtyPlain(snap.mmQty)}万 · 点进做市账户`, tag: 'robot', to: '/ops/dump' },
         { time: '09:51', text: `沉睡仓 ${fmtQtyPlain(8 + pairSeed * 2)}万转活跃`, tag: 'warning', to: '/desk/users' },
-        { time: '09:12', text: `大额挂单进入买一，所内活跃抬升`, tag: 'user', to: '/orderbook' }
+        { time: '09:12', text: `大额挂单进入买一，所内活跃抬升`, tag: 'user', to: '/ops/ladder' }
       ]
     : [
         { time: '10:36', text: `${topUser?.id || '0x'} 转入 ${fmtQtyPlain(18 + pairSeed * 2)}万`, tag: 'success', to: topUser?.to || '/chips/external' },
@@ -4119,11 +4120,12 @@ export function generateCostDev(pair, costDevWarn = 20) {
   const peakIndex = bandAmounts.indexOf(Math.max(...bandAmounts))
 
   const buckets = [
-    { name: '深套 ≤−15%', color: '#ff5a7a', weight: Math.max(4, 18 - Math.round(dev / 2)) },
-    { name: '浅套 −15～0%', color: '#ffb347', weight: Math.max(8, 22 - Math.round(dev / 3)) },
-    { name: '成本附近', color: '#6a9aff', weight: 18 },
-    { name: '小赚 0～15%', color: '#4cd9a0', weight: Math.max(10, 16 + Math.round(dev / 4)) },
-    { name: '大赚 ≥15%', color: '#a78bfa', weight: Math.max(6, 8 + Math.round(dev / 3)) }
+    { name: '盈利 0–20%', color: '#7ed9b0', weight: Math.max(10, 16 + Math.round(dev / 4)) },
+    { name: '盈利 20–50%', color: '#4cd9a0', weight: Math.max(8, 12 + Math.round(dev / 3)) },
+    { name: '盈利 ≥50%', color: '#a78bfa', weight: Math.max(4, 6 + Math.round(dev / 5)) },
+    { name: '亏损 0–20%', color: '#ffb347', weight: Math.max(8, 18 - Math.round(dev / 3)) },
+    { name: '亏损 20–50%', color: '#ff7a94', weight: Math.max(6, 14 - Math.round(dev / 3)) },
+    { name: '亏损 ≥50%', color: '#ff5a7a', weight: Math.max(3, 10 - Math.round(dev / 2)) }
   ]
   const weightSum = buckets.reduce((sum, item) => sum + item.weight, 0) || 1
   const exchHint = Number(String(d.floatSupply).replace(/,/g, '')) * (100 - Number(d.external)) / 100
@@ -4157,8 +4159,8 @@ export function generateCostDev(pair, costDevWarn = 20) {
       ...row,
       lastPrice,
       pnlPct,
-      band: pnlPct >= 15 ? '大赚' : pnlPct >= 0 ? '小赚' : pnlPct >= -15 ? '浅套' : '深套',
-      bandTag: pnlPct >= 15 ? 'robot' : pnlPct >= 0 ? 'user' : pnlPct >= -15 ? 'warning' : 'alert'
+      band: pnlPct >= 50 ? '盈利 ≥50%' : pnlPct >= 20 ? '盈利 20–50%' : pnlPct >= 0 ? '盈利 0–20%' : pnlPct > -20 ? '亏损 0–20%' : pnlPct > -50 ? '亏损 20–50%' : '亏损 ≥50%',
+      bandTag: pnlPct >= 0 ? 'user' : pnlPct > -20 ? 'warning' : 'alert'
     }
   })
 
@@ -4287,7 +4289,33 @@ export function generateExchangeUser(pair, uid, scope = 'pair') {
   const cancelRatio = Number((6 + (seed % 28) + (primary.key === 'prog' ? 12 : 0)).toFixed(1))
   const tradeDays = 6 + (seed % 22) + (all ? 4 : 0)
   const avgTicket = Number(((todayBuy + todaySell) / Math.max(4 + (seed % 8), 1)).toFixed(2))
-  const openOrders = 1 + (seed % 7)
+  const openOrderCount = 1 + (seed % 7)
+  const orderSides = [
+    { side: '买', tag: 'user' },
+    { side: '卖', tag: 'warning' }
+  ]
+  const orders = []
+  for (let i = 0; i < openOrderCount; i++) {
+    const meta = orderSides[(i + seed) % 2]
+    const p = pairs[i % pairs.length]
+    const t = p.split('/')[0]
+    const px = assets.find((row) => row.pair === p)?.price || lastPrice
+    const slip = 1 + ((i * 5 + seed) % 11 - 5) / 400
+    const qty = Number((0.8 + ((i * 17 + seed) % 36) / 10).toFixed(1))
+    const price = Number((px * slip).toFixed(4))
+    orders.push({
+      time: clockNow(40 + i * 23),
+      pair: p,
+      token: t,
+      side: meta.side,
+      tag: meta.tag,
+      qty,
+      price,
+      notional: Number((qty * price).toFixed(2))
+    })
+  }
+  orders.sort((a, b) => Number(b.price) - Number(a.price))
+  const openOrders = orders.length
   const ticketLabel = avgTicket >= 8 ? '大单' : avgTicket >= 3 ? '中单' : '小单'
   const holdLabel = avgHoldHours < 4 ? '超短' : avgHoldHours < 18 ? '日内' : avgHoldHours < 48 ? '波段' : '长持'
   const freq = trades30 / Math.max(tradeDays, 1)
@@ -4479,6 +4507,7 @@ export function generateExchangeUser(pair, uid, scope = 'pair') {
       tokens: tokenSeries
     },
     fills,
+    orders,
     transfers
   }
 }

@@ -187,6 +187,7 @@ function matchesItem(item, path) {
   if (!path) return false
   if (item.match === 'address') return path.startsWith('/chips/external/address')
   if (item.match === 'user') return path === '/desk/user' || path.startsWith('/desk/user/')
+  if (item.match === 'profile') return path === '/user-profile' || path.startsWith('/user-profile/')
   if (!item.to) return false
   return path === item.to
 }

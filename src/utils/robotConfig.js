@@ -26,7 +26,8 @@ export function cloneOrderRule(raw = {}, fallback = DEFAULT_ORDER_RULE, index = 
     maxPrice: Math.max(0, num(src.maxPrice ?? src.maxPct, base.maxPrice)),
     minAmt: Math.max(0, num(src.minAmt, src.minBuyAmt ?? src.minSellAmt ?? base.minAmt)),
     maxAmt: Math.max(0, num(src.maxAmt, src.maxBuyAmt ?? src.maxSellAmt ?? base.maxAmt)),
-    count: Math.max(1, Math.round(num(src.count, src.bidDepth ?? src.askDepth ?? base.count)))
+    count: Math.max(1, Math.round(num(src.count, src.bidDepth ?? src.askDepth ?? base.count))),
+    intervalMs: Math.max(1, Math.round(num(src.intervalMs, base.intervalMs ?? DEFAULT_ORDER_RULE.intervalMs)))
   }
 }
 
