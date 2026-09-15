@@ -182,7 +182,7 @@
 
         <div class="card">
           <div class="card-header">
-            <span>💰 做市资金 / 做市账户余额 / 代币市值</span>
+            <span>💰 做市资金 / USDT余额 / 代币市值</span>
             <span class="badge">万USDT · 全部历史</span>
           </div>
           <ChartBox :option="assetOption" size="tall" />
@@ -282,7 +282,7 @@
                 <tr>
                   <th>日期</th>
                   <th>做市资金(万USDT)</th>
-                  <th>做市账户余额</th>
+                  <th>USDT余额</th>
                   <th>真实余额</th>
                   <th>借入金额</th>
                   <th>代币自有</th>
@@ -464,7 +464,7 @@ const mmAxis = computed(() => ({
 
 const assetOption = computed(() => ({
   tooltip: { trigger: 'axis' },
-  legend: { ...legend, data: ['做市资金', '做市账户余额', '代币市值'] },
+  legend: { ...legend, data: ['做市资金', 'USDT余额', '代币市值'] },
   grid: { left: '8%', right: '4%', top: '16%', bottom: '12%' },
   xAxis: mmAxis.value,
   yAxis: { ...yAxis, name: '万USDT', nameTextStyle: { color: '#4a6080', fontSize: 9 } },
@@ -478,7 +478,7 @@ const assetOption = computed(() => ({
       symbol: 'none'
     },
     {
-      name: '做市账户余额',
+      name: 'USDT余额',
       type: 'line',
       data: data.value?.mm?.series?.cash || [],
       smooth: true,

@@ -39,10 +39,6 @@
           <div>
             <div class="user-token">{{ data.scopeLabel }}</div>
             <div class="user-id">UID {{ data.uid }}</div>
-            <div class="user-meta">
-              注册 {{ data.profile.registered }} · {{ data.profile.kyc }} · {{ data.profile.vip }}
-              · {{ data.profile.region }} · 最近 {{ data.profile.lastActive }}
-            </div>
           </div>
           <div class="tag-row">
             <router-link
@@ -580,12 +576,6 @@ const assetOption = computed(() => ({
   font-weight: 700;
   color: var(--text-title);
   letter-spacing: 0.4px;
-}
-.user-meta {
-  margin-top: 6px;
-  font-size: 11px;
-  color: var(--text-soft);
-  line-height: 1.5;
 }
 .tag-row {
   display: flex;

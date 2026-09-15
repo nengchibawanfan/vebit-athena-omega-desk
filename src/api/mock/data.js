@@ -244,12 +244,16 @@ function summarizeOrderBook(rows) {
 
 export function generateOrderBook(pair) {
   const pairSeed = pairSeedOf(pair)
-  const rows = DETAIL_ORDERS.map((row, i) => ({
-    id: `ord-${pairSeed}-${i}`,
-    ...row,
-    amount: Number((row.amount * (0.92 + ((i + pairSeed) % 5) * 0.03)).toFixed(1)),
-    filled: Number(row.filled)
-  }))
+  const rows = DETAIL_ORDERS.map((row, i) => {
+    const amount = Number((row.amount * (0.92 + ((i + pairSeed) % 5) * 0.03)).toFixed(1))
+    const filled = Number(Math.min(Number(row.filled) || 0, amount).toFixed(1))
+    return {
+      id: `ord-${pairSeed}-${i}`,
+      ...row,
+      amount,
+      filled
+    }
+  })
   const extras = [
     { side: '卖', tag: 'robot', account: '机器人 #F4' },
     { side: '卖', tag: 'user', account: '用户 6***1' },
@@ -262,16 +266,17 @@ export function generateOrderBook(pair) {
     const price = item.side === '卖'
       ? (1.03 + i * 0.015 + pairSeed * 0.002).toFixed(2)
       : (0.98 - i * 0.012 - pairSeed * 0.002).toFixed(2)
+    const amount = Number((5 + ((i * 7 + pairSeed * 3) % 16) + i * 1.4).toFixed(1))
     rows.push({
       id: `ord-${pairSeed}-x${i}`,
       price,
       side: item.side,
       tag: item.tag,
-      amount: Number((5 + ((i * 7 + pairSeed * 3) % 16) + i * 1.4).toFixed(1)),
+      amount,
       account: item.account,
       time: clockNow(80 + i * 17),
       cancels: item.tag === 'robot' ? (i + pairSeed) % 4 : 0,
-      filled: Number((((i * 3 + pairSeed) % 8) * 0.6).toFixed(1))
+      filled: Number(Math.min((((i * 3 + pairSeed) % 8) * 0.6), amount).toFixed(1))
     })
   })
   const clustered = [
@@ -306,8 +311,9 @@ export function tickOrderBook(book) {
     const delta = Number((((Math.random() - 0.42) * 2.4)).toFixed(1))
     row.amount = Number(Math.max(0.3, row.amount + delta).toFixed(1))
     if (Math.random() > 0.45) {
-      row.filled = Number((row.filled + Math.abs(delta) * 0.35).toFixed(1))
+      row.filled = Number(((Number(row.filled) || 0) + Math.abs(delta) * 0.35).toFixed(1))
     }
+    row.filled = Number(Math.min(Number(row.filled) || 0, row.amount).toFixed(1))
     if (row.tag === 'robot' && Math.random() > 0.72) row.cancels += 1
     row.time = clockNow()
   }
@@ -2509,14 +2515,22 @@ export function generateRobotStatus(pair, accountsConfig = [], robotConfig = nul
     ? `自成交 ${washOnBots.length} UID · 间隔 ${washMs}ms`
     : '自成交关'
 
+  const uid0 = robots[0]?.uid || '—'
+  const uid1 = robots[1]?.uid || uid0
+  const label0 = strategyLabel(robots[0]?.strategy)
+  const pack0 = robots[0] ? strategyPackOf(robotCfg, robots[0].strategy) : null
+  const bidCount = pack0 ? orderSideCount(pack0.order.bid) : 5
+  const bidSpread = pack0?.quote?.bidSpread ?? 0.1
+  const washMs0 = pack0?.wash?.minIntervalMs ?? washMs ?? 1000
+
   const events = [
-    { time: '10:21:06', uid: robots[0]?.uid || '—', type: '扩买盘', detail: '库存回落，买一加挂 8.0 万', tag: 'success' },
-    { time: '10:08:44', uid: robots[1]?.uid || robots[0]?.uid || '—', type: '回收库存', detail: '做市库存偏高，抽回金库 12.0 万', tag: 'user' },
-    { time: '09:55:18', uid: robots[0]?.uid || '—', type: '收窄价差', detail: `价差 ${avgSpread + 1.2}→${avgSpread} bps`, tag: 'robot' },
-    { time: '09:40:02', uid: '系统', type: '心跳', detail: `双机延迟 ${robots[0]?.latency || 16}/${robots[1]?.latency || 22}ms`, tag: 'success' },
-    { time: '09:22:51', uid: robots[0]?.uid || '—', type: '撤远单', detail: '卖五以外撤单 3 档，降低虚挂', tag: 'warning' },
-    { time: '08:57:30', uid: robots[1]?.uid || '—', type: '备用挂价', detail: '主账户成交后，备用补卖一 5.5 万', tag: 'robot' },
-    { time: '08:31:14', uid: '系统', type: '安全带', detail: `做市库存 ${robotInv}% · ${bandStatus}`, tag: bandStatus === '安全区间' ? 'success' : 'warning' }
+    { time: '10:21:06', uid: uid0, type: '切换策略', detail: `做市报价 → ${label0}`, tag: 'robot' },
+    { time: '10:08:44', uid: uid1, type: '调整挂单', detail: `Bid 档数 ${Math.max(1, bidCount - 1)} → ${bidCount} · 最小百分比 0.10→0.12`, tag: 'warning' },
+    { time: '09:55:18', uid: uid0, type: '调整报价', detail: `买盘价差 ${Number((Number(bidSpread) + 0.02).toFixed(2))} → ${bidSpread}`, tag: 'robot' },
+    { time: '09:40:02', uid: uid1, type: '调整自成交', detail: `最小成交间隔 ${Number(washMs0) + 200}ms → ${washMs0}ms`, tag: 'user' },
+    { time: '09:22:51', uid: uid0, type: '切换策略', detail: `护盘托价 → ${label0}`, tag: 'success' },
+    { time: '08:57:30', uid: uid1, type: '启停', detail: robots[1]?.running === false ? '停止运行' : '启动运行', tag: robots[1]?.running === false ? 'alert' : 'success' },
+    { time: '08:31:14', uid: uid0, type: '开关自成交', detail: robots[0]?.washOn ? '自成交 关 → 开' : '自成交 开 → 关', tag: 'warning' }
   ]
 
   return {
@@ -4491,7 +4505,7 @@ export function generateExchangeUser(pair, uid, scope = 'pair') {
       withdraw30
     },
     status: [
-      { color: kyc === '已认证' ? 'green' : 'yellow', text: `${kyc} · ${vip} · 注册 ${80 + (seed % 520)} 天` },
+      { color: 'green', text: `交易天数 ${tradeDays} 天` },
       { color: todayNet >= 0 ? 'green' : 'yellow', text: `今日净${todayNet >= 0 ? '买' : '卖'} ${signedPlain(todayNet)}${qtyUnit}` },
       { color: pnlU >= 0 ? 'green' : 'red', text: `持仓浮盈亏 ${signedPlain(pnlU)}万USDT · ${pnlPct >= 0 ? '+' : ''}${pnlPct}%` },
       { color: 'yellow', text: `近30日成交 ${trades30} 笔 · ${tradeDays} 个交易日 · 挂撤 ${cancelRatio}%` }

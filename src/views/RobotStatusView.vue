@@ -143,7 +143,7 @@
       </div>
 
       <div class="card">
-        <div class="card-header"><span>📝 近期做市动作</span><span class="badge">今日</span></div>
+        <div class="card-header"><span>📝 近期做市动作</span><span class="badge">策略 / 参数</span></div>
         <div class="alert-list">
           <table>
             <thead>

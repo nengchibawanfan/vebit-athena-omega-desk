@@ -9,7 +9,13 @@
                 <span class="live-dot"></span>
                 {{ statusLabel }}
               </span>
-              <span class="badge">买=你卖出 · 卖=你买入 · {{ visibleOrders.length }}笔 · ≥{{ whaleThreshold }}万高亮</span>
+              <button
+                type="button"
+                class="btn-sm"
+                :class="{ primary: whaleOnly }"
+                @click="whaleOnly = !whaleOnly"
+              >只显示大单</button>
+              <span class="badge">买=你卖出 · 卖=你买入 · {{ visibleOrders.length }}笔 · ≥{{ whaleThreshold }}万{{ whaleOnly ? '大单' : '高亮' }}</span>
             </span>
           </div>
           <div class="table-wrap">
@@ -19,6 +25,7 @@
                   <th>价格</th>
                   <th>方向</th>
                   <th>数量(万)</th>
+                  <th>未成交数量(万)</th>
                   <th>至该价累计(万)</th>
                   <th>账户</th>
                   <th>挂单时间</th>
@@ -36,15 +43,16 @@
                   </td>
                   <td><span class="tag" :class="row.tag">{{ row.side }}</span></td>
                   <td>
-                    {{ row.amount }}
+                    {{ fmtBookQty(row.amount) }}
                     <span v-if="row.isWhale" class="whale-flag">大单</span>
                   </td>
+                  <td>{{ fmtBookQty(row.unfilledQty) }}</td>
                   <td>{{ row.cumText }}</td>
                   <td>{{ row.account }}</td>
                   <td>{{ row.time }}</td>
                 </tr>
                 <tr v-if="!visibleOrders.length">
-                  <td colspan="6" class="empty-cell">暂无真实用户挂单</td>
+                  <td colspan="7" class="empty-cell">{{ whaleOnly ? '暂无真实用户大单' : '暂无真实用户挂单' }}</td>
                 </tr>
               </tbody>
             </table>
@@ -93,7 +101,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { appState } from '@/stores/app'
 import { userDetailPath } from '@/utils/uid'
 import { useLiveOrders } from '@/composables/useLiveOrders'
@@ -115,6 +123,7 @@ const {
 const blocks = computed(() => props.blocks || { kpis: {}, rows: [], hours: {}, status: [] })
 const hasBlocks = computed(() => Boolean(blocks.value?.kpis || (blocks.value?.rows || []).length))
 const whaleThreshold = computed(() => Number(appState.config.whaleThreshold) || 50)
+const whaleOnly = ref(false)
 
 const pageLoading = computed(() => liveLoading.value && !liveData.value)
 const pageError = computed(() => {
@@ -155,18 +164,41 @@ function isRealUserOrder(row) {
   return true
 }
 
+function orderQty(row) {
+  return Number(row.amount) || 0
+}
+
+function unfilledQty(row) {
+  const qty = orderQty(row)
+  const explicit = row.unfilled ?? row.remain ?? row.remaining
+  if (explicit != null && explicit !== '') {
+    return Math.max(0, Number(explicit) || 0)
+  }
+  const filled = Number(row.filled) || 0
+  return Math.max(0, Number((qty - filled).toFixed(1)))
+}
+
 const visibleOrders = computed(() => {
-  const rows = (liveData.value?.rows || []).filter(isRealUserOrder)
+  const threshold = whaleThreshold.value
+  let rows = (liveData.value?.rows || [])
+    .filter(isRealUserOrder)
+    .map((row) => ({
+      ...row,
+      unfilledQty: unfilledQty(row),
+      isWhale: orderQty(row) >= threshold
+    }))
+  if (whaleOnly.value) rows = rows.filter((row) => row.isWhale)
+
   const bidQty = new Map()
   const askQty = new Map()
   const bidCount = new Map()
   const askCount = new Map()
   for (const row of rows) {
     const price = Number(row.price)
-    const amount = Number(row.amount) || 0
+    const leftover = Number(row.unfilledQty) || 0
     const qtyMap = row.side === '买' ? bidQty : askQty
     const countMap = row.side === '买' ? bidCount : askCount
-    qtyMap.set(price, (qtyMap.get(price) || 0) + amount)
+    qtyMap.set(price, (qtyMap.get(price) || 0) + leftover)
     countMap.set(price, (countMap.get(price) || 0) + 1)
   }
   const bidPrices = [...bidQty.keys()].sort((a, b) => b - a)
@@ -183,25 +215,22 @@ const visibleOrders = computed(() => {
     total += askQty.get(price)
     askCum.set(price, Number(total.toFixed(1)))
   }
-  const threshold = whaleThreshold.value
   return rows
     .map((row) => {
       const price = Number(row.price)
-      const amount = Number(row.amount) || 0
       const cum = row.side === '买' ? bidCum.get(price) : askCum.get(price)
       const samePriceCount = row.side === '买' ? bidCount.get(price) : askCount.get(price)
       return {
         ...row,
         cumText: fmtBookQty(cum),
-        samePriceCount: samePriceCount || 1,
-        isWhale: amount >= threshold
+        samePriceCount: samePriceCount || 1
       }
     })
     .sort((a, b) => {
       const dp = Number(b.price) - Number(a.price)
       if (dp) return dp
       if (a.side !== b.side) return a.side === '卖' ? -1 : 1
-      return Number(b.amount) - Number(a.amount)
+      return Number(b.unfilledQty) - Number(a.unfilledQty)
     })
 })
 </script>

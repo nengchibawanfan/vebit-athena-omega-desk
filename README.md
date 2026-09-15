@@ -28,9 +28,9 @@ npm run preview    # 预览构建结果
 
 如果后端返回 `{ code: 0, data: ... }` 或 `{ success: true, data: ... }`，`src/api/http.js` 会自动取出 `data`。
 
-## 约定接口
+## 口径
 
-**按页面解释每个名词和算法见 [docs/页面名词.md](docs/页面名词.md)。成本口径见 [docs/名词解释.md](docs/名词解释.md)。接口路径和字段见 [docs/API.md](docs/API.md)。**
+每个页面上的名词和怎么算，只看 [docs/页面名词.md](docs/页面名词.md)。不再另写接口字段文档。
 
 所有 GET 都带查询参数 `pair`（如 `VBT/USDT`）。历史接口前端传 `days=all`（全部历史，不是 7/15/30）。
 

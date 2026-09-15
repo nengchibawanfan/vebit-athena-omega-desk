@@ -140,15 +140,6 @@
               <div class="qty">成交额 {{ fmtQty(blocks.kpis?.tradeVolume) }}<span class="unit">万</span></div>
             </div>
           </div>
-          <div class="kpi-item clickable" @click="$router.push('/alerts')">
-            <div class="label">待处理</div>
-            <div class="kpi-metrics">
-              <div class="value" :style="{ color: blocks.kpis?.alertCount ? '#ff5a7a' : '#4cd9a0' }">
-                {{ blocks.kpis?.pending }}<span class="unit">条</span>
-              </div>
-            </div>
-            <div class="sub">红色 {{ blocks.kpis?.alertCount }}</div>
-          </div>
           <div class="kpi-item">
             <div class="label">大单笔数</div>
             <div class="kpi-metrics">
