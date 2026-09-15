@@ -4,7 +4,7 @@
       <div class="brand">
         <span class="brand-mark">🎯</span>
         <span class="brand-copy">
-          <span class="brand-name">Athena</span>
+          <span class="brand-name">ATHENA</span>
           <span class="brand-sub">Omega Desk</span>
         </span>
       </div>
