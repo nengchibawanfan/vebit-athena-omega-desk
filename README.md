@@ -8,7 +8,7 @@
 
 公开 mock 预览：https://nengchibawanfan.github.io/vebit-athena-omega-desk/
 
-推送到 `main` 后 GitHub Pages 会自动重新部署。这是前端 mock，不接真实后端。
+推送到 `main` 后会自动更新这个预览。这是前端 mock，不接真实后端。
 
 ## 启动
 
