@@ -7,6 +7,7 @@ export default defineConfig(({ mode }) => {
   const proxyTarget = env.VITE_API_PROXY_TARGET || 'http://localhost:8080'
 
   return {
+    base: process.env.VITE_BASE || '/',
     plugins: [vue()],
     resolve: {
       alias: {

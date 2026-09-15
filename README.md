@@ -4,6 +4,12 @@
 
 当前默认走本地 mock，界面可独立运行；后端就绪后改环境变量即可切到真实接口。
 
+## 在线演示
+
+公开 mock 预览：https://nengchibawanfan.github.io/vebit-athena-omega-desk/
+
+推送到 `main` 后 GitHub Pages 会自动重新部署。这是前端 mock，不接真实后端。
+
 ## 启动
 
 ```bash
